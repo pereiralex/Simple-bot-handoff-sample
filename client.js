@@ -1,6 +1,7 @@
 // <Create a chat client>
 import { ChatClient } from '@azure/communication-chat';
 import { AzureCommunicationTokenCredential } from '@azure/communication-common';
+import BotService from './bot-service.js';
 
 let endpointUrl = 'https://alexper-test1.unitedstates.communication.azure.com/';
 let userAccessToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkY1M0ZEODA0RThBNDhBQzg4Qjg3NTA3M0M4MzRCRDdGNzBCMzBENDUiLCJ4NXQiOiI5VF9ZQk9pa2lzaUxoMUJ6eURTOWYzQ3pEVVUiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmMyZjJiZjU0LTFiMzctNDY3Zi1hZGUzLTE1YzY0MjhkMDMxMF8wMDAwMDAyNi02ZGU3LTUzNjgtZTEzOC04ZTNhMGQwMGM4OTEiLCJzY3AiOjE3OTIsImNzaSI6IjE3NDI5MTgyMzMiLCJleHAiOjE3NDMwMDQ2MzMsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6ImNoYXQiLCJyZXNvdXJjZUlkIjoiYzJmMmJmNTQtMWIzNy00NjdmLWFkZTMtMTVjNjQyOGQwMzEwIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTc0MjkxODIzM30.gZtIf6QFf-7oEX_2BGvVOCvn9ciWg0UY_jgVYav7MS_OAM0gNEap9sc_cW1O2XNQPqFckSPSeUhpbnWDQ5noyMB3Du7sdcS9tsqB7i8_doBgfsmBv09Ps_WWbZ_P_fOxZ0NECgeXeWJTtzyjWlBXOndWa31Foi84X9xtpjzH61U6NVNyduWeDwrAEwz-7uSWTNY68kQikJB1AcjN9eF-j1xW5cngCDkqR7Hi78HyelJa9-IPx33OTSiS5cVpM4PNqDxVnpN2LY8jcRf12lk0XL3oFisjk7pOppRC0Stxa7TYN2DMOYWxVj7fl4vPFb7Xjz4zsb0-CCMl3TX_37H4OQ';
@@ -56,6 +57,29 @@ try {
 const displayedMessageIds = new Set();
 console.log('🔄 Message tracking initialized');
 
+// Initialize bot service
+const botService = new BotService();
+let isAgentActive = false;
+
+// Add takeover button handler
+const takeoverButton = document.getElementById('takeoverButton');
+takeoverButton.addEventListener('click', async () => {
+    if (!isAgentActive) {
+        isAgentActive = true;
+        takeoverButton.disabled = true;
+        
+        // Deactivate bot and send handoff message
+        const handoffMessage = await botService.deactivate();
+        
+        // Send system message about agent joining
+        const agentJoinMessage = "A customer service agent has joined the conversation.";
+        
+        // Send both messages through ACS
+        await sendSystemMessage(handoffMessage);
+        await sendSystemMessage(agentJoinMessage);
+    }
+});
+
 // Function to show error message in UI
 function showErrorInUI(message) {
     console.error('🚨 Showing error in UI:', message);
@@ -104,29 +128,29 @@ async function createChatThread() {
     }
     
     try {
-        const createChatThreadRequest = {
+    const createChatThreadRequest = {
             topic: "Flight Information"
-        };
+    };
         
         console.log('👥 Setting up participants...');
-        const createChatThreadOptions = {
-            participants: [
-                {
-                    id: { communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de7-5368-e138-8e3a0d00c891' },
+    const createChatThreadOptions = {
+        participants: [
+            {
+                id: { communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de7-5368-e138-8e3a0d00c891' },
                     displayName: 'Sarah Jones'
-                },
-                {
-                    id: { communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de8-ad3e-7137-8e3a0d00d703' },
+            },
+            {
+                id: { communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de8-ad3e-7137-8e3a0d00d703' },
                     displayName: 'Support Agent'
-                }
-            ]
-        };
+            }
+        ]
+    };
         
         console.log('⏳ Awaiting thread creation with options:', createChatThreadOptions);
-        const createChatThreadResult = await chatClient.createChatThread(
-            createChatThreadRequest,
-            createChatThreadOptions
-        );
+    const createChatThreadResult = await chatClient.createChatThread(
+        createChatThreadRequest,
+        createChatThreadOptions
+    );
         
         chatThreadId = createChatThreadResult.chatThread.id;
         console.log(`✨ Chat thread created with ID: ${chatThreadId}`);
@@ -220,7 +244,7 @@ function addMessageToAgentUI(message, isAgent = false, sender = null, messageId 
     }
 }
 
-// Send a message from customer
+// Modify sendCustomerMessage to handle bot responses
 async function sendCustomerMessage(content) {
     if (!content.trim()) {
         console.log('⚠️ Empty message - not sending');
@@ -228,40 +252,49 @@ async function sendCustomerMessage(content) {
     }
     
     console.log(`📤 Sending customer message: "${content}"`);
-    console.log('🧪 Current chatThreadClient:', chatThreadClient);
-    
-    const sendMessageRequest = {
-        content: content
-    };
-    const sendMessageOptions = {
-        senderDisplayName: 'Sarah Jones',
-        type: 'text'
-    };
-    
-    console.log('📦 Message request:', sendMessageRequest);
-    console.log('⚙️ Message options:', sendMessageOptions);
     
     try {
-        if (!chatThreadClient) {
-            throw new Error('Chat thread client is not initialized');
-        }
+        // Send customer message through ACS
+        const sendMessageRequest = {
+            content: content
+        };
+        const sendMessageOptions = {
+            senderDisplayName: 'Sarah Jones',
+            type: 'text'
+        };
         
-        console.log('⏳ Awaiting sendMessage response...');
         const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
-        console.log(`✅ Customer message sent successfully! Message ID: ${sendChatMessageResult.id}`);
-        console.log('📊 Send result details:', sendChatMessageResult);
         
         // Add message to customer UI immediately
         addMessageToCustomerUI(content, true, sendChatMessageResult.id);
+        addMessageToAgentUI(content, false, 'Sarah Jones', sendChatMessageResult.id);
+        
+        // Clear input
         customerInput.value = '';
+        
+        // If bot is active, get bot response
+        if (botService.isEnabled()) {
+            const botResponse = await botService.processMessage(content);
+            if (botResponse) {
+                // Send bot response through ACS
+                const botMessageRequest = {
+                    content: botResponse
+                };
+                const botMessageOptions = {
+                    senderDisplayName: 'AI Assistant',
+                    type: 'text'
+                };
+                
+                const botMessageResult = await chatThreadClient.sendMessage(botMessageRequest, botMessageOptions);
+                
+                // Add bot response to both UIs
+                addMessageToCustomerUI(botResponse, false, botMessageResult.id);
+                addMessageToAgentUI(botResponse, false, 'AI Assistant', botMessageResult.id);
+            }
+        }
     } catch (error) {
-        console.error('❌ Error sending customer message:', error);
-        console.error('🧪 Error details:', {
-            error,
-            chatThreadClient,
-            threadId: chatThreadId
-        });
-        showErrorInUI('Failed to send customer message: ' + error.message);
+        console.error('❌ Error in message flow:', error);
+        showErrorInUI('Failed to process message: ' + error.message);
     }
 }
 
@@ -307,6 +340,27 @@ async function sendAgentMessage(content) {
             threadId: chatThreadId
         });
         showErrorInUI('Failed to send agent message: ' + error.message);
+    }
+}
+
+// Add function to send system messages
+async function sendSystemMessage(content) {
+    try {
+        const messageRequest = {
+            content: content
+        };
+        const messageOptions = {
+            senderDisplayName: 'System',
+            type: 'text'
+        };
+        
+        const messageResult = await chatThreadClient.sendMessage(messageRequest, messageOptions);
+        
+        // Add system message to both UIs
+        addMessageToCustomerUI(content, false, messageResult.id);
+        addMessageToAgentUI(content, false, 'System', messageResult.id);
+    } catch (error) {
+        console.error('❌ Error sending system message:', error);
     }
 }
 
@@ -371,7 +425,7 @@ async function setupEventHandlers() {
     }
 }
 
-// Initialize customer service chat demo
+// Modify initializeChat to start bot conversation
 async function initializeChat() {
     console.log('🚀 Starting chat initialization...');
     
@@ -410,48 +464,9 @@ async function initializeChat() {
         
         console.log('✅ Chat thread client created:', chatThreadClient);
         
-        // Add initial messages
-        console.log('💬 Setting up initial messages...');
-        
-        // Initial customer message
-        const initialCustomerMessage = "Hello, what is the fee to bring a golf bag on my flight?";
-        console.log(`📝 Sending initial customer message: "${initialCustomerMessage}"`);
-        
-        // Send the message and get the result
-        const sendMessageRequest = {
-            content: initialCustomerMessage
-        };
-        const sendMessageOptions = {
-            senderDisplayName: 'Sarah Jones',
-            type: 'text'
-        };
-        
-        const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
-        
-        // Manually add the message to both UIs
-        addMessageToCustomerUI(initialCustomerMessage, true, sendChatMessageResult.id);
-        addMessageToAgentUI(initialCustomerMessage, false, 'Sarah Jones', sendChatMessageResult.id);
-        
-        // Wait a moment before sending agent response
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Initial agent response
-        const initialAgentMessage = "Hi there, I can certainly help you with that.";
-        console.log(`📝 Sending initial agent message: "${initialAgentMessage}"`);
-        
-        const agentMessageRequest = {
-            content: initialAgentMessage
-        };
-        const agentMessageOptions = {
-            senderDisplayName: 'Support Agent',
-            type: 'text'
-        };
-        
-        const agentMessageResult = await chatThreadClient.sendMessage(agentMessageRequest, agentMessageOptions);
-        
-        // Manually add the agent message to both UIs
-        addMessageToCustomerUI(initialAgentMessage, false, agentMessageResult.id);
-        addMessageToAgentUI(initialAgentMessage, true, 'Support Agent', agentMessageResult.id);
+        // Start bot conversation with greeting
+        const greeting = await botService.startConversation();
+        await sendSystemMessage(greeting);
         
         // Set up UI event listeners
         console.log('🖱️ Setting up UI event listeners...');

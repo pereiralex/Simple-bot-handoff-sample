@@ -663,8 +663,11 @@ function hmrAccept(bundle /*: ParcelRequire */ , id /*: string */ ) {
 
 },{}],"lsDBr":[function(require,module,exports,__globalThis) {
 // <Create a chat client>
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 var _communicationChat = require("@azure/communication-chat");
 var _communicationCommon = require("@azure/communication-common");
+var _botServiceJs = require("./bot-service.js");
+var _botServiceJsDefault = parcelHelpers.interopDefault(_botServiceJs);
 let endpointUrl = 'https://alexper-test1.unitedstates.communication.azure.com/';
 let userAccessToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkY1M0ZEODA0RThBNDhBQzg4Qjg3NTA3M0M4MzRCRDdGNzBCMzBENDUiLCJ4NXQiOiI5VF9ZQk9pa2lzaUxoMUJ6eURTOWYzQ3pEVVUiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmMyZjJiZjU0LTFiMzctNDY3Zi1hZGUzLTE1YzY0MjhkMDMxMF8wMDAwMDAyNi02ZGU3LTUzNjgtZTEzOC04ZTNhMGQwMGM4OTEiLCJzY3AiOjE3OTIsImNzaSI6IjE3NDI5MTgyMzMiLCJleHAiOjE3NDMwMDQ2MzMsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6ImNoYXQiLCJyZXNvdXJjZUlkIjoiYzJmMmJmNTQtMWIzNy00NjdmLWFkZTMtMTVjNjQyOGQwMzEwIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTc0MjkxODIzM30.gZtIf6QFf-7oEX_2BGvVOCvn9ciWg0UY_jgVYav7MS_OAM0gNEap9sc_cW1O2XNQPqFckSPSeUhpbnWDQ5noyMB3Du7sdcS9tsqB7i8_doBgfsmBv09Ps_WWbZ_P_fOxZ0NECgeXeWJTtzyjWlBXOndWa31Foi84X9xtpjzH61U6NVNyduWeDwrAEwz-7uSWTNY68kQikJB1AcjN9eF-j1xW5cngCDkqR7Hi78HyelJa9-IPx33OTSiS5cVpM4PNqDxVnpN2LY8jcRf12lk0XL3oFisjk7pOppRC0Stxa7TYN2DMOYWxVj7fl4vPFb7Xjz4zsb0-CCMl3TX_37H4OQ';
 // DOM Element check
@@ -710,6 +713,24 @@ try {
 // Track message IDs we've already displayed to prevent duplicates
 const displayedMessageIds = new Set();
 console.log("\uD83D\uDD04 Message tracking initialized");
+// Initialize bot service
+const botService = new (0, _botServiceJsDefault.default)();
+let isAgentActive = false;
+// Add takeover button handler
+const takeoverButton = document.getElementById('takeoverButton');
+takeoverButton.addEventListener('click', async ()=>{
+    if (!isAgentActive) {
+        isAgentActive = true;
+        takeoverButton.disabled = true;
+        // Deactivate bot and send handoff message
+        const handoffMessage = await botService.deactivate();
+        // Send system message about agent joining
+        const agentJoinMessage = "A customer service agent has joined the conversation.";
+        // Send both messages through ACS
+        await sendSystemMessage(handoffMessage);
+        await sendSystemMessage(agentJoinMessage);
+    }
+});
 // Function to show error message in UI
 function showErrorInUI(message) {
     console.error("\uD83D\uDEA8 Showing error in UI:", message);
@@ -851,40 +872,49 @@ function addMessageToAgentUI(message, isAgent = false, sender = null, messageId 
         console.error("\u274C Error adding message to agent UI:", error);
     }
 }
-// Send a message from customer
+// Modify sendCustomerMessage to handle bot responses
 async function sendCustomerMessage(content) {
     if (!content.trim()) {
         console.log("\u26A0\uFE0F Empty message - not sending");
         return;
     }
     console.log(`\u{1F4E4} Sending customer message: "${content}"`);
-    console.log("\uD83E\uDDEA Current chatThreadClient:", chatThreadClient);
-    const sendMessageRequest = {
-        content: content
-    };
-    const sendMessageOptions = {
-        senderDisplayName: 'Sarah Jones',
-        type: 'text'
-    };
-    console.log("\uD83D\uDCE6 Message request:", sendMessageRequest);
-    console.log("\u2699\uFE0F Message options:", sendMessageOptions);
     try {
-        if (!chatThreadClient) throw new Error('Chat thread client is not initialized');
-        console.log("\u23F3 Awaiting sendMessage response...");
+        // Send customer message through ACS
+        const sendMessageRequest = {
+            content: content
+        };
+        const sendMessageOptions = {
+            senderDisplayName: 'Sarah Jones',
+            type: 'text'
+        };
         const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
-        console.log(`\u{2705} Customer message sent successfully! Message ID: ${sendChatMessageResult.id}`);
-        console.log("\uD83D\uDCCA Send result details:", sendChatMessageResult);
         // Add message to customer UI immediately
         addMessageToCustomerUI(content, true, sendChatMessageResult.id);
+        addMessageToAgentUI(content, false, 'Sarah Jones', sendChatMessageResult.id);
+        // Clear input
         customerInput.value = '';
+        // If bot is active, get bot response
+        if (botService.isEnabled()) {
+            const botResponse = await botService.processMessage(content);
+            if (botResponse) {
+                // Send bot response through ACS
+                const botMessageRequest = {
+                    content: botResponse
+                };
+                const botMessageOptions = {
+                    senderDisplayName: 'AI Assistant',
+                    type: 'text'
+                };
+                const botMessageResult = await chatThreadClient.sendMessage(botMessageRequest, botMessageOptions);
+                // Add bot response to both UIs
+                addMessageToCustomerUI(botResponse, false, botMessageResult.id);
+                addMessageToAgentUI(botResponse, false, 'AI Assistant', botMessageResult.id);
+            }
+        }
     } catch (error) {
-        console.error("\u274C Error sending customer message:", error);
-        console.error("\uD83E\uDDEA Error details:", {
-            error,
-            chatThreadClient,
-            threadId: chatThreadId
-        });
-        showErrorInUI('Failed to send customer message: ' + error.message);
+        console.error("\u274C Error in message flow:", error);
+        showErrorInUI('Failed to process message: ' + error.message);
     }
 }
 // Send a message from agent
@@ -921,6 +951,24 @@ async function sendAgentMessage(content) {
             threadId: chatThreadId
         });
         showErrorInUI('Failed to send agent message: ' + error.message);
+    }
+}
+// Add function to send system messages
+async function sendSystemMessage(content) {
+    try {
+        const messageRequest = {
+            content: content
+        };
+        const messageOptions = {
+            senderDisplayName: 'System',
+            type: 'text'
+        };
+        const messageResult = await chatThreadClient.sendMessage(messageRequest, messageOptions);
+        // Add system message to both UIs
+        addMessageToCustomerUI(content, false, messageResult.id);
+        addMessageToAgentUI(content, false, 'System', messageResult.id);
+    } catch (error) {
+        console.error("\u274C Error sending system message:", error);
     }
 }
 // Set up event handlers for real-time notifications
@@ -972,7 +1020,7 @@ async function setupEventHandlers() {
         return false;
     }
 }
-// Initialize customer service chat demo
+// Modify initializeChat to start bot conversation
 async function initializeChat() {
     console.log("\uD83D\uDE80 Starting chat initialization...");
     try {
@@ -999,39 +1047,9 @@ async function initializeChat() {
         chatThreadClient = chatClient.getChatThreadClient(threadId);
         if (!chatThreadClient) throw new Error('Failed to create chat thread client');
         console.log("\u2705 Chat thread client created:", chatThreadClient);
-        // Add initial messages
-        console.log("\uD83D\uDCAC Setting up initial messages...");
-        // Initial customer message
-        const initialCustomerMessage = "Hello, what is the fee to bring a golf bag on my flight?";
-        console.log(`\u{1F4DD} Sending initial customer message: "${initialCustomerMessage}"`);
-        // Send the message and get the result
-        const sendMessageRequest = {
-            content: initialCustomerMessage
-        };
-        const sendMessageOptions = {
-            senderDisplayName: 'Sarah Jones',
-            type: 'text'
-        };
-        const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
-        // Manually add the message to both UIs
-        addMessageToCustomerUI(initialCustomerMessage, true, sendChatMessageResult.id);
-        addMessageToAgentUI(initialCustomerMessage, false, 'Sarah Jones', sendChatMessageResult.id);
-        // Wait a moment before sending agent response
-        await new Promise((resolve)=>setTimeout(resolve, 1000));
-        // Initial agent response
-        const initialAgentMessage = "Hi there, I can certainly help you with that.";
-        console.log(`\u{1F4DD} Sending initial agent message: "${initialAgentMessage}"`);
-        const agentMessageRequest = {
-            content: initialAgentMessage
-        };
-        const agentMessageOptions = {
-            senderDisplayName: 'Support Agent',
-            type: 'text'
-        };
-        const agentMessageResult = await chatThreadClient.sendMessage(agentMessageRequest, agentMessageOptions);
-        // Manually add the agent message to both UIs
-        addMessageToCustomerUI(initialAgentMessage, false, agentMessageResult.id);
-        addMessageToAgentUI(initialAgentMessage, true, 'Support Agent', agentMessageResult.id);
+        // Start bot conversation with greeting
+        const greeting = await botService.startConversation();
+        await sendSystemMessage(greeting);
         // Set up UI event listeners
         console.log("\uD83D\uDDB1\uFE0F Setting up UI event listeners...");
         customerSendButton.addEventListener('click', ()=>{
@@ -1077,7 +1095,7 @@ console.log("\uD83D\uDE80 Starting application...");
 initializeChat();
 console.log("\u2705 Application startup complete - awaiting initialization to finish");
 
-},{"@azure/communication-chat":"9DIoN","@azure/communication-common":"cyhBF"}],"9DIoN":[function(require,module,exports,__globalThis) {
+},{"@azure/communication-chat":"9DIoN","@azure/communication-common":"cyhBF","./bot-service.js":"gGuDA","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"9DIoN":[function(require,module,exports,__globalThis) {
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
@@ -27065,6 +27083,84 @@ const createCommunicationTokenCredentialPolicy = (credential)=>{
     }, []);
 };
 
-},{"@azure/core-http":"1W9s4","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}]},["ot36a","lsDBr"], "lsDBr", "parcelRequired7e8")
+},{"@azure/core-http":"1W9s4","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"gGuDA":[function(require,module,exports,__globalThis) {
+// Azure OpenAI Configuration
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+const AZURE_OPENAI_ENDPOINT = 'https://alexper-test.openai.azure.com';
+const AZURE_OPENAI_KEY = '6f33abc23fe145e1942699fb513479b9';
+const DEPLOYMENT_NAME = 'gpt-35-turbo';
+const API_VERSION = '2024-02-15-preview';
+class BotService {
+    // Initialize conversation with greeting
+    async startConversation() {
+        const greeting = {
+            role: "assistant",
+            content: "Hello! I'm an automated customer service assistant. I'm here to help you with your questions. How can I assist you today?"
+        };
+        this.conversationHistory.push(greeting);
+        return greeting.content;
+    }
+    // Deactivate bot (when agent takes over)
+    deactivate() {
+        this.isActive = false;
+        return "A customer service agent will be taking over the conversation. Thank you for your patience.";
+    }
+    // Check if bot is active
+    isEnabled() {
+        return this.isActive;
+    }
+    // Process a message through Azure OpenAI
+    async processMessage(userMessage) {
+        if (!this.isActive) return null;
+        try {
+            // Add user message to history
+            this.conversationHistory.push({
+                role: "user",
+                content: userMessage
+            });
+            // Prepare the messages array with system prompt and conversation history
+            const messages = [
+                {
+                    role: "system",
+                    content: "You are an customer service AI assistant for Contoso Airlines. Your role is to help customers with basic inquiries about baggage fees, flight information, and general policies. Be professional, friendly, clear, and concise in your responses. You haven't been armed with the specific information needed to answer most questions so instead make up a reasonable answer based on your training data. If you cannot help with something, politely acknowledge that and suggest speaking with a human agent."
+                },
+                ...this.conversationHistory
+            ];
+            // Call Azure OpenAI API
+            const response = await fetch(`${AZURE_OPENAI_ENDPOINT}/openai/deployments/${DEPLOYMENT_NAME}/chat/completions?api-version=${API_VERSION}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': AZURE_OPENAI_KEY
+                },
+                body: JSON.stringify({
+                    messages: messages,
+                    temperature: 0.7,
+                    max_tokens: 800
+                })
+            });
+            if (!response.ok) throw new Error(`API call failed: ${response.statusText}`);
+            const data = await response.json();
+            const botResponse = data.choices[0].message.content;
+            // Add bot response to history
+            this.conversationHistory.push({
+                role: "assistant",
+                content: botResponse
+            });
+            return botResponse;
+        } catch (error) {
+            console.error('Error processing message with Azure OpenAI:', error);
+            return "I apologize, but I'm having trouble processing your request. Please try again or speak with a human agent.";
+        }
+    }
+    constructor(){
+        this.conversationHistory = [];
+        this.isActive = true; // Bot starts active
+    }
+}
+exports.default = BotService;
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}]},["ot36a","lsDBr"], "lsDBr", "parcelRequired7e8")
 
 //# sourceMappingURL=Simple-bot-handoff-sample.b5a3cd24.js.map

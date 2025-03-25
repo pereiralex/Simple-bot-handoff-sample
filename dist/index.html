@@ -213,8 +213,14 @@
 
 .agent-chat-header {
   border-bottom: 1px solid #eee;
+  justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
+  display: flex;
+}
+
+.agent-chat-header .left-section {
+  align-items: center;
   display: flex;
 }
 
@@ -228,6 +234,27 @@
   margin-right: 10px;
   font-size: 14px;
   display: flex;
+}
+
+.takeover-button {
+  color: #fff;
+  cursor: pointer;
+  background-color: #0084ff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color .2s;
+}
+
+.takeover-button:hover {
+  background-color: #06c;
+}
+
+.takeover-button:disabled {
+  cursor: not-allowed;
+  background-color: #ccc;
 }
 
 .agent-chat-messages {
@@ -382,8 +409,11 @@
                 
                 <div class="agent-chat">
                     <div class="agent-chat-header">
-                        <div class="avatar">SJ</div>
-                        Sarah Jones
+                        <div class="left-section">
+                            <div class="avatar">SJ</div>
+                            <span>Sarah Jones</span>
+                        </div>
+                        <button id="takeoverButton" class="takeover-button">Take Over Chat</button>
                     </div>
                     
                     <div id="agentMessages" class="agent-chat-messages">
