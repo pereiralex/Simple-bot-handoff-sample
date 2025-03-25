@@ -156,11 +156,11 @@
       });
     }
   }
-})({"408bW":[function(require,module,exports,__globalThis) {
+})({"ot36a":[function(require,module,exports,__globalThis) {
 var global = arguments[3];
 var HMR_HOST = null;
 var HMR_PORT = null;
-var HMR_SERVER_PORT = 65207;
+var HMR_SERVER_PORT = 51163;
 var HMR_SECURE = false;
 var HMR_ENV_HASH = "439701173a9199ea";
 var HMR_USE_SSE = false;
@@ -725,7 +725,7 @@ createChatThread().then(async (threadId)=>{
         participants: [
             {
                 id: {
-                    communicationUserId: '<NEW_PARTICIPANT_USER_ID>'
+                    communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de7-5368-e138-8e3a0d00c891'
                 },
                 displayName: 'Jane'
             }
@@ -737,7 +737,7 @@ createChatThread().then(async (threadId)=>{
     for await (const participant of participants)console.log(`participants in thread:${participant.id.communicationUserId}`);
     // <Remove user from a chat thread>
     await chatThreadClient.removeParticipant({
-        communicationUserId: '<NEW_PARTICIPANT_USER_ID>'
+        communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de8-ad3e-7137-8e3a0d00d703'
     });
     const users = chatThreadClient.listParticipants();
     for await (const user of users)console.log(`participants in thread available:${user.id.communicationUserId}`);
@@ -26731,6 +26731,6 @@ const createCommunicationTokenCredentialPolicy = (credential)=>{
     }, []);
 };
 
-},{"@azure/core-http":"1W9s4","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}]},["408bW","lsDBr"], "lsDBr", "parcelRequired7e8")
+},{"@azure/core-http":"1W9s4","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}]},["ot36a","lsDBr"], "lsDBr", "parcelRequired7e8")
 
 //# sourceMappingURL=Simple-bot-handoff-sample.b5a3cd24.js.map

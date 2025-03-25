@@ -91,7 +91,7 @@ createChatThread().then(async threadId => {
     }
 
     // <Remove user from a chat thread>
-    await chatThreadClient.removeParticipant({ communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de7-5368-e138-8e3a0d00c891' });
+    await chatThreadClient.removeParticipant({ communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de8-ad3e-7137-8e3a0d00d703' });
     const users = chatThreadClient.listParticipants();
     for await (const user of users) {
         console.log(`participants in thread available:${user.id.communicationUserId}`);
