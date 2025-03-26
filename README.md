@@ -7,6 +7,9 @@ products:
 - azure-communication-services
 ---
 
+![image](https://github.com/user-attachments/assets/3c3bfbd3-7465-48db-98fb-f222a1ad43b4)
+
+
 # Customer Service Chat with AI Assistant Handoff
 
 This application demonstrates a complete customer service chat experience with an AI-powered assistant that can automatically handle customer inquiries and seamlessly hand off to a human agent when needed.
