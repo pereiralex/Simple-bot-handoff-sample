@@ -1,10 +1,10 @@
 // <Create a chat client>
 import { ChatClient } from '@azure/communication-chat';
 import { AzureCommunicationTokenCredential } from '@azure/communication-common';
-import BotService from './bot-service.js';
+import BotService, { SummaryService } from './bot-service.js';
 
 let endpointUrl = 'https://alexper-test1.unitedstates.communication.azure.com/';
-let userAccessToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkY1M0ZEODA0RThBNDhBQzg4Qjg3NTA3M0M4MzRCRDdGNzBCMzBENDUiLCJ4NXQiOiI5VF9ZQk9pa2lzaUxoMUJ6eURTOWYzQ3pEVVUiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmMyZjJiZjU0LTFiMzctNDY3Zi1hZGUzLTE1YzY0MjhkMDMxMF8wMDAwMDAyNi02ZGU3LTUzNjgtZTEzOC04ZTNhMGQwMGM4OTEiLCJzY3AiOjE3OTIsImNzaSI6IjE3NDI5MTgyMzMiLCJleHAiOjE3NDMwMDQ2MzMsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6ImNoYXQiLCJyZXNvdXJjZUlkIjoiYzJmMmJmNTQtMWIzNy00NjdmLWFkZTMtMTVjNjQyOGQwMzEwIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTc0MjkxODIzM30.gZtIf6QFf-7oEX_2BGvVOCvn9ciWg0UY_jgVYav7MS_OAM0gNEap9sc_cW1O2XNQPqFckSPSeUhpbnWDQ5noyMB3Du7sdcS9tsqB7i8_doBgfsmBv09Ps_WWbZ_P_fOxZ0NECgeXeWJTtzyjWlBXOndWa31Foi84X9xtpjzH61U6NVNyduWeDwrAEwz-7uSWTNY68kQikJB1AcjN9eF-j1xW5cngCDkqR7Hi78HyelJa9-IPx33OTSiS5cVpM4PNqDxVnpN2LY8jcRf12lk0XL3oFisjk7pOppRC0Stxa7TYN2DMOYWxVj7fl4vPFb7Xjz4zsb0-CCMl3TX_37H4OQ';
+let userAccessToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkY1M0ZEODA0RThBNDhBQzg4Qjg3NTA3M0M4MzRCRDdGNzBCMzBENDUiLCJ4NXQiOiI5VF9ZQk9pa2lzaUxoMUJ6eURTOWYzQ3pEVVUiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmMyZjJiZjU0LTFiMzctNDY3Zi1hZGUzLTE1YzY0MjhkMDMxMF8wMDAwMDAyNi03MzJjLWE2NjktOWMzMi04ZTNhMGQwMDgwMDAiLCJzY3AiOjE3OTIsImNzaSI6IjE3NDMwMDY2NjMiLCJleHAiOjE3NDMwOTMwNjMsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6ImNoYXQiLCJyZXNvdXJjZUlkIjoiYzJmMmJmNTQtMWIzNy00NjdmLWFkZTMtMTVjNjQyOGQwMzEwIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTc0MzAwNjY2M30.BBApY3ipN0JqtYnzlnnxufiTP12RoHTdXDK7_4Hi63bWGqdct1ePIP0DexMZ6v_sfTHYxls1TMjuXO4zkRO2k8uAqMVhffbrUlFUIKq5o18X0glvlC7cf26qbKTq36y3pTHUPPce7_dMp6nOvzbhZTdwS6oDyhxXNgyfXFAer3NQrOXmg98PF824okMpEHkZTgtKbokeMasWBXgEx_li8vEskMgi1O9LGiFc9LCS3esXcOlj-yjcN3M874xJPE647FV-OOFN8c_LPx4mCyHJJ1vOagzDwAgyMItn2DsViTzkxMYLTFyv_frY8pAU8UsWapjtRf8m-AdO8Zux3T1aNg';
 
 // DOM Element check
 console.log('🔍 Checking DOM elements...');
@@ -60,6 +60,10 @@ console.log('🔄 Message tracking initialized');
 // Initialize bot service
 const botService = new BotService();
 let isAgentActive = false;
+
+// Initialize summary service
+const summaryService = new SummaryService();
+let lastMessageTime = null;
 
 // Add takeover button handler
 const takeoverButton = document.getElementById('takeoverButton');
@@ -181,25 +185,82 @@ function addMessageToAgentUI(message, isAgent = false, sender = null, messageId 
     }
     
     try {
-        const messageDiv = document.createElement('div');
-        // Add 'bot' class if the sender is AI Assistant
-        const isBot = sender === 'AI Assistant';
-        messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'}`;
+        // Check if this is a system message
+        const isSystem = sender === 'System';
         
-        // Add sender if provided
-        if (sender) {
-            const senderDiv = document.createElement('div');
-            senderDiv.className = 'sender';
-            senderDiv.textContent = sender;
-            messageDiv.appendChild(senderDiv);
+        if (isSystem) {
+            // Create a simpler wrapper for system messages
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = 'message-wrapper system';
+            
+            // Create message div for system message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'agent-message system';
+            messageDiv.textContent = message;
+            
+            // Add to wrapper and then to container
+            messageWrapper.appendChild(messageDiv);
+            agentMessagesContainer.appendChild(messageWrapper);
+        } else {
+            // Create a wrapper for the message and avatar
+            const messageWrapper = document.createElement('div');
+            messageWrapper.style.display = 'flex';
+            messageWrapper.style.alignItems = 'flex-start';
+            messageWrapper.style.gap = '10px';
+            messageWrapper.style.marginBottom = '15px';
+            
+            // Add 'bot' class if the sender is AI Assistant
+            const isBot = sender === 'AI Assistant';
+            
+            // Create avatar element
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = isBot ? 'message-avatar bot' : 
+                                isAgent ? 'message-avatar agent' : 
+                                'message-avatar customer';
+            
+            // Set avatar content based on sender
+            if (isBot) {
+                avatarDiv.innerHTML = '🤖';
+            } else if (isAgent) {
+                avatarDiv.textContent = 'SA';
+            } else {
+                // Customer
+                avatarDiv.textContent = 'SJ';
+            }
+            
+            // Create message div
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'}`;
+            messageDiv.style.margin = '0';
+            
+            // Add sender if provided
+            if (sender) {
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'sender';
+                senderDiv.textContent = sender;
+                messageDiv.appendChild(senderDiv);
+            }
+            
+            // Add message content
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = message;
+            messageDiv.appendChild(contentDiv);
+            
+            // Append avatar and message to wrapper
+            if (isBot || isAgent) {
+                // For bot and agent messages, avatar goes on the right
+                messageWrapper.style.flexDirection = 'row-reverse';
+                messageWrapper.appendChild(avatarDiv);
+                messageWrapper.appendChild(messageDiv);
+            } else {
+                // For customer messages, avatar goes on the left
+                messageWrapper.appendChild(avatarDiv);
+                messageWrapper.appendChild(messageDiv);
+            }
+            
+            // Add to agent messages container
+            agentMessagesContainer.appendChild(messageWrapper);
         }
-        
-        // Add message content
-        const contentDiv = document.createElement('div');
-        contentDiv.textContent = message;
-        messageDiv.appendChild(contentDiv);
-        
-        agentMessagesContainer.appendChild(messageDiv);
         
         // Scroll to bottom
         agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
@@ -226,17 +287,37 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null, i
     }
     
     try {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isCustomer ? 'sent' : 'received'}`;
-        messageDiv.textContent = message;
+        // Check if this is a system message (passed via senderDisplayName in sendSystemMessage)
+        const isSystem = messageId && messageId.includes('system');
         
-        // Add timestamp
-        const timestamp = document.createElement('div');
-        timestamp.className = 'timestamp';
-        timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        messageDiv.appendChild(timestamp);
-        
-        customerMessagesContainer.appendChild(messageDiv);
+        if (isSystem) {
+            // Create a simple styled system message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.style.alignSelf = 'center';
+            messageDiv.style.background = 'transparent';
+            messageDiv.style.color = '#6c757d';
+            messageDiv.style.fontSize = '13px';
+            messageDiv.style.padding = '5px 15px';
+            messageDiv.style.textAlign = 'center';
+            messageDiv.style.maxWidth = '100%';
+            messageDiv.style.border = 'none';
+            messageDiv.textContent = message;
+            
+            customerMessagesContainer.appendChild(messageDiv);
+        } else {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isCustomer ? 'sent' : 'received'}`;
+            messageDiv.textContent = message;
+            
+            // Add timestamp
+            const timestamp = document.createElement('div');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            messageDiv.appendChild(timestamp);
+            
+            customerMessagesContainer.appendChild(messageDiv);
+        }
         
         // Scroll to bottom
         customerMessagesContainer.scrollTop = customerMessagesContainer.scrollHeight;
@@ -245,6 +326,104 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null, i
         console.error('❌ Error adding message to customer UI:', error);
     }
 }
+
+// Add function to create and display summary card
+function addSummaryToAgentUI(summary) {
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'agent-message summary-card';
+    summaryDiv.style.width = '80%';
+    summaryDiv.style.maxWidth = '600px';
+    summaryDiv.style.alignSelf = 'center';
+    summaryDiv.style.background = 'white';
+    summaryDiv.style.border = '1px solid #ccd';
+    summaryDiv.style.borderRadius = '8px';
+    summaryDiv.style.padding = '15px';
+    summaryDiv.style.margin = '10px 0';
+    summaryDiv.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+
+    // Create header
+    const headerDiv = document.createElement('div');
+    headerDiv.style.display = 'flex';
+    headerDiv.style.alignItems = 'center';
+    headerDiv.style.marginBottom = '10px';
+    headerDiv.style.paddingBottom = '10px';
+    headerDiv.style.borderBottom = '1px solid #e1e1e1';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.textContent = '📋';
+    iconSpan.style.marginRight = '8px';
+    iconSpan.style.fontSize = '16px';
+
+    const headerText = document.createElement('span');
+    headerText.textContent = 'Conversation Summary';
+    headerText.style.fontWeight = '600';
+    headerText.style.color = '#333';
+    headerText.style.fontSize = '16px';
+
+    const timestamp = document.createElement('span');
+    timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    timestamp.style.marginLeft = 'auto';
+    timestamp.style.color = '#888';
+    timestamp.style.fontSize = '12px';
+
+    headerDiv.appendChild(iconSpan);
+    headerDiv.appendChild(headerText);
+    headerDiv.appendChild(timestamp);
+
+    // Create content with formatted paragraphs
+    const contentDiv = document.createElement('div');
+    
+    // Format summary with paragraphs
+    const paragraphs = summary.split('\n').filter(p => p.trim() !== '');
+    
+    paragraphs.forEach(paragraph => {
+        const p = document.createElement('p');
+        p.textContent = paragraph;
+        p.style.margin = '0 0 10px 0';
+        p.style.lineHeight = '1.5';
+        contentDiv.appendChild(p);
+    });
+    
+    contentDiv.style.color = '#444';
+    contentDiv.style.fontSize = '14px';
+    contentDiv.style.lineHeight = '1.5';
+
+    summaryDiv.appendChild(headerDiv);
+    summaryDiv.appendChild(contentDiv);
+
+    // Add to agent messages container
+    agentMessagesContainer.appendChild(summaryDiv);
+    agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
+}
+
+// Add function to handle summarize button click
+const handleSummarizeClick = async () => {
+    const summarizeButton = document.getElementById('summarizeButton');
+    if (!summarizeButton || !chatThreadClient) {
+        console.error('Required elements not initialized');
+        return;
+    }
+    
+    summarizeButton.disabled = true;
+    
+    try {
+        // Get all messages from the thread
+        const messages = [];
+        const iterator = chatThreadClient.listMessages();
+        for await (const message of iterator) {
+            messages.push(message);
+        }
+
+        const summary = await summaryService.generateSummary(messages);
+        addSummaryToAgentUI(summary);
+        lastMessageTime = new Date();
+    } catch (error) {
+        console.error('Error generating summary:', error);
+        showErrorInUI('Failed to generate conversation summary');
+    } finally {
+        summarizeButton.disabled = false;
+    }
+};
 
 // Update the bot message handling in sendCustomerMessage
 async function sendCustomerMessage(content) {
@@ -294,6 +473,12 @@ async function sendCustomerMessage(content) {
                 addMessageToAgentUI(botResponse, false, 'AI Assistant', botMessageResult.id);
             }
         }
+        
+        lastMessageTime = new Date();
+        const summarizeButton = document.getElementById('summarizeButton');
+        if (summarizeButton) {
+            summarizeButton.disabled = false;
+        }
     } catch (error) {
         console.error('❌ Error in message flow:', error);
         showErrorInUI('Failed to process message: ' + error.message);
@@ -334,6 +519,12 @@ async function sendAgentMessage(content) {
         // Add message to agent UI immediately
         addMessageToAgentUI(content, true, 'Support Agent', sendChatMessageResult.id);
         agentInput.value = '';
+        
+        lastMessageTime = new Date();
+        const summarizeButton = document.getElementById('summarizeButton');
+        if (summarizeButton) {
+            summarizeButton.disabled = false;
+        }
     } catch (error) {
         console.error('❌ Error sending agent message:', error);
         console.error('🧪 Error details:', {
@@ -358,8 +549,10 @@ async function sendSystemMessage(content) {
         
         const messageResult = await chatThreadClient.sendMessage(messageRequest, messageOptions);
         
-        // Add system message to both UIs
-        addMessageToCustomerUI(content, false, messageResult.id, false);
+        // Add system message to both UIs - passing the "System" sender
+        // Mark the message ID to identify it as a system message
+        const systemMessageId = `system-${messageResult.id}`;
+        addMessageToCustomerUI(content, false, systemMessageId, false);
         addMessageToAgentUI(content, false, 'System', messageResult.id);
     } catch (error) {
         console.error('❌ Error sending system message:', error);
@@ -486,6 +679,11 @@ async function initializeChat() {
         
         // Set up UI event listeners
         console.log('🖱️ Setting up UI event listeners...');
+        
+        const summarizeButton = document.getElementById('summarizeButton');
+        if (summarizeButton) {
+            summarizeButton.addEventListener('click', handleSummarizeClick);
+        }
         
         customerSendButton.addEventListener('click', () => {
             console.log('🖱️ Customer send button clicked');

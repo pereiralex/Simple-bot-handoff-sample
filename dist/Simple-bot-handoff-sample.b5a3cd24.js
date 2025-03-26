@@ -669,7 +669,7 @@ var _communicationCommon = require("@azure/communication-common");
 var _botServiceJs = require("./bot-service.js");
 var _botServiceJsDefault = parcelHelpers.interopDefault(_botServiceJs);
 let endpointUrl = 'https://alexper-test1.unitedstates.communication.azure.com/';
-let userAccessToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkY1M0ZEODA0RThBNDhBQzg4Qjg3NTA3M0M4MzRCRDdGNzBCMzBENDUiLCJ4NXQiOiI5VF9ZQk9pa2lzaUxoMUJ6eURTOWYzQ3pEVVUiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmMyZjJiZjU0LTFiMzctNDY3Zi1hZGUzLTE1YzY0MjhkMDMxMF8wMDAwMDAyNi02ZGU3LTUzNjgtZTEzOC04ZTNhMGQwMGM4OTEiLCJzY3AiOjE3OTIsImNzaSI6IjE3NDI5MTgyMzMiLCJleHAiOjE3NDMwMDQ2MzMsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6ImNoYXQiLCJyZXNvdXJjZUlkIjoiYzJmMmJmNTQtMWIzNy00NjdmLWFkZTMtMTVjNjQyOGQwMzEwIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTc0MjkxODIzM30.gZtIf6QFf-7oEX_2BGvVOCvn9ciWg0UY_jgVYav7MS_OAM0gNEap9sc_cW1O2XNQPqFckSPSeUhpbnWDQ5noyMB3Du7sdcS9tsqB7i8_doBgfsmBv09Ps_WWbZ_P_fOxZ0NECgeXeWJTtzyjWlBXOndWa31Foi84X9xtpjzH61U6NVNyduWeDwrAEwz-7uSWTNY68kQikJB1AcjN9eF-j1xW5cngCDkqR7Hi78HyelJa9-IPx33OTSiS5cVpM4PNqDxVnpN2LY8jcRf12lk0XL3oFisjk7pOppRC0Stxa7TYN2DMOYWxVj7fl4vPFb7Xjz4zsb0-CCMl3TX_37H4OQ';
+let userAccessToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkY1M0ZEODA0RThBNDhBQzg4Qjg3NTA3M0M4MzRCRDdGNzBCMzBENDUiLCJ4NXQiOiI5VF9ZQk9pa2lzaUxoMUJ6eURTOWYzQ3pEVVUiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmMyZjJiZjU0LTFiMzctNDY3Zi1hZGUzLTE1YzY0MjhkMDMxMF8wMDAwMDAyNi03MzJjLWE2NjktOWMzMi04ZTNhMGQwMDgwMDAiLCJzY3AiOjE3OTIsImNzaSI6IjE3NDMwMDY2NjMiLCJleHAiOjE3NDMwOTMwNjMsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6ImNoYXQiLCJyZXNvdXJjZUlkIjoiYzJmMmJmNTQtMWIzNy00NjdmLWFkZTMtMTVjNjQyOGQwMzEwIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTc0MzAwNjY2M30.BBApY3ipN0JqtYnzlnnxufiTP12RoHTdXDK7_4Hi63bWGqdct1ePIP0DexMZ6v_sfTHYxls1TMjuXO4zkRO2k8uAqMVhffbrUlFUIKq5o18X0glvlC7cf26qbKTq36y3pTHUPPce7_dMp6nOvzbhZTdwS6oDyhxXNgyfXFAer3NQrOXmg98PF824okMpEHkZTgtKbokeMasWBXgEx_li8vEskMgi1O9LGiFc9LCS3esXcOlj-yjcN3M874xJPE647FV-OOFN8c_LPx4mCyHJJ1vOagzDwAgyMItn2DsViTzkxMYLTFyv_frY8pAU8UsWapjtRf8m-AdO8Zux3T1aNg';
 // DOM Element check
 console.log("\uD83D\uDD0D Checking DOM elements...");
 const customerMessagesContainer = document.getElementById('customerMessages');
@@ -716,6 +716,9 @@ console.log("\uD83D\uDD04 Message tracking initialized");
 // Initialize bot service
 const botService = new (0, _botServiceJsDefault.default)();
 let isAgentActive = false;
+// Initialize summary service
+const summaryService = new (0, _botServiceJs.SummaryService)();
+let lastMessageTime = null;
 // Add takeover button handler
 const takeoverButton = document.getElementById('takeoverButton');
 takeoverButton.addEventListener('click', async ()=>{
@@ -818,22 +821,65 @@ function addMessageToAgentUI(message, isAgent = false, sender = null, messageId 
         console.log(`\u{2705} Marked message ${messageId} as displayed in agent UI`);
     }
     try {
-        const messageDiv = document.createElement('div');
-        // Add 'bot' class if the sender is AI Assistant
-        const isBot = sender === 'AI Assistant';
-        messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'}`;
-        // Add sender if provided
-        if (sender) {
-            const senderDiv = document.createElement('div');
-            senderDiv.className = 'sender';
-            senderDiv.textContent = sender;
-            messageDiv.appendChild(senderDiv);
+        // Check if this is a system message
+        const isSystem = sender === 'System';
+        if (isSystem) {
+            // Create a simpler wrapper for system messages
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = 'message-wrapper system';
+            // Create message div for system message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'agent-message system';
+            messageDiv.textContent = message;
+            // Add to wrapper and then to container
+            messageWrapper.appendChild(messageDiv);
+            agentMessagesContainer.appendChild(messageWrapper);
+        } else {
+            // Create a wrapper for the message and avatar
+            const messageWrapper = document.createElement('div');
+            messageWrapper.style.display = 'flex';
+            messageWrapper.style.alignItems = 'flex-start';
+            messageWrapper.style.gap = '10px';
+            messageWrapper.style.marginBottom = '15px';
+            // Add 'bot' class if the sender is AI Assistant
+            const isBot = sender === 'AI Assistant';
+            // Create avatar element
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = isBot ? 'message-avatar bot' : isAgent ? 'message-avatar agent' : 'message-avatar customer';
+            // Set avatar content based on sender
+            if (isBot) avatarDiv.innerHTML = "\uD83E\uDD16";
+            else if (isAgent) avatarDiv.textContent = 'SA';
+            else // Customer
+            avatarDiv.textContent = 'SJ';
+            // Create message div
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'}`;
+            messageDiv.style.margin = '0';
+            // Add sender if provided
+            if (sender) {
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'sender';
+                senderDiv.textContent = sender;
+                messageDiv.appendChild(senderDiv);
+            }
+            // Add message content
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = message;
+            messageDiv.appendChild(contentDiv);
+            // Append avatar and message to wrapper
+            if (isBot || isAgent) {
+                // For bot and agent messages, avatar goes on the right
+                messageWrapper.style.flexDirection = 'row-reverse';
+                messageWrapper.appendChild(avatarDiv);
+                messageWrapper.appendChild(messageDiv);
+            } else {
+                // For customer messages, avatar goes on the left
+                messageWrapper.appendChild(avatarDiv);
+                messageWrapper.appendChild(messageDiv);
+            }
+            // Add to agent messages container
+            agentMessagesContainer.appendChild(messageWrapper);
         }
-        // Add message content
-        const contentDiv = document.createElement('div');
-        contentDiv.textContent = message;
-        messageDiv.appendChild(contentDiv);
-        agentMessagesContainer.appendChild(messageDiv);
         // Scroll to bottom
         agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
         console.log("\u2705 Message added to agent UI successfully");
@@ -855,18 +901,36 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null, i
         console.log(`\u{2705} Marked message ${messageId} as displayed in customer UI`);
     }
     try {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isCustomer ? 'sent' : 'received'}`;
-        messageDiv.textContent = message;
-        // Add timestamp
-        const timestamp = document.createElement('div');
-        timestamp.className = 'timestamp';
-        timestamp.textContent = new Date().toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        messageDiv.appendChild(timestamp);
-        customerMessagesContainer.appendChild(messageDiv);
+        // Check if this is a system message (passed via senderDisplayName in sendSystemMessage)
+        const isSystem = messageId && messageId.includes('system');
+        if (isSystem) {
+            // Create a simple styled system message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.style.alignSelf = 'center';
+            messageDiv.style.background = 'transparent';
+            messageDiv.style.color = '#6c757d';
+            messageDiv.style.fontSize = '13px';
+            messageDiv.style.padding = '5px 15px';
+            messageDiv.style.textAlign = 'center';
+            messageDiv.style.maxWidth = '100%';
+            messageDiv.style.border = 'none';
+            messageDiv.textContent = message;
+            customerMessagesContainer.appendChild(messageDiv);
+        } else {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isCustomer ? 'sent' : 'received'}`;
+            messageDiv.textContent = message;
+            // Add timestamp
+            const timestamp = document.createElement('div');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            messageDiv.appendChild(timestamp);
+            customerMessagesContainer.appendChild(messageDiv);
+        }
         // Scroll to bottom
         customerMessagesContainer.scrollTop = customerMessagesContainer.scrollHeight;
         console.log("\u2705 Message added to customer UI successfully");
@@ -874,6 +938,89 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null, i
         console.error("\u274C Error adding message to customer UI:", error);
     }
 }
+// Add function to create and display summary card
+function addSummaryToAgentUI(summary) {
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'agent-message summary-card';
+    summaryDiv.style.width = '80%';
+    summaryDiv.style.maxWidth = '600px';
+    summaryDiv.style.alignSelf = 'center';
+    summaryDiv.style.background = 'white';
+    summaryDiv.style.border = '1px solid #ccd';
+    summaryDiv.style.borderRadius = '8px';
+    summaryDiv.style.padding = '15px';
+    summaryDiv.style.margin = '10px 0';
+    summaryDiv.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+    // Create header
+    const headerDiv = document.createElement('div');
+    headerDiv.style.display = 'flex';
+    headerDiv.style.alignItems = 'center';
+    headerDiv.style.marginBottom = '10px';
+    headerDiv.style.paddingBottom = '10px';
+    headerDiv.style.borderBottom = '1px solid #e1e1e1';
+    const iconSpan = document.createElement('span');
+    iconSpan.textContent = "\uD83D\uDCCB";
+    iconSpan.style.marginRight = '8px';
+    iconSpan.style.fontSize = '16px';
+    const headerText = document.createElement('span');
+    headerText.textContent = 'Conversation Summary';
+    headerText.style.fontWeight = '600';
+    headerText.style.color = '#333';
+    headerText.style.fontSize = '16px';
+    const timestamp = document.createElement('span');
+    timestamp.textContent = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    timestamp.style.marginLeft = 'auto';
+    timestamp.style.color = '#888';
+    timestamp.style.fontSize = '12px';
+    headerDiv.appendChild(iconSpan);
+    headerDiv.appendChild(headerText);
+    headerDiv.appendChild(timestamp);
+    // Create content with formatted paragraphs
+    const contentDiv = document.createElement('div');
+    // Format summary with paragraphs
+    const paragraphs = summary.split('\n').filter((p)=>p.trim() !== '');
+    paragraphs.forEach((paragraph)=>{
+        const p = document.createElement('p');
+        p.textContent = paragraph;
+        p.style.margin = '0 0 10px 0';
+        p.style.lineHeight = '1.5';
+        contentDiv.appendChild(p);
+    });
+    contentDiv.style.color = '#444';
+    contentDiv.style.fontSize = '14px';
+    contentDiv.style.lineHeight = '1.5';
+    summaryDiv.appendChild(headerDiv);
+    summaryDiv.appendChild(contentDiv);
+    // Add to agent messages container
+    agentMessagesContainer.appendChild(summaryDiv);
+    agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
+}
+// Add function to handle summarize button click
+const handleSummarizeClick = async ()=>{
+    const summarizeButton = document.getElementById('summarizeButton');
+    if (!summarizeButton || !chatThreadClient) {
+        console.error('Required elements not initialized');
+        return;
+    }
+    summarizeButton.disabled = true;
+    try {
+        // Get all messages from the thread
+        const messages = [];
+        const iterator = chatThreadClient.listMessages();
+        for await (const message of iterator)messages.push(message);
+        const summary = await summaryService.generateSummary(messages);
+        addSummaryToAgentUI(summary);
+        lastMessageTime = new Date();
+    } catch (error) {
+        console.error('Error generating summary:', error);
+        showErrorInUI('Failed to generate conversation summary');
+    } finally{
+        summarizeButton.disabled = false;
+    }
+};
 // Update the bot message handling in sendCustomerMessage
 async function sendCustomerMessage(content) {
     if (!content.trim()) {
@@ -914,6 +1061,9 @@ async function sendCustomerMessage(content) {
                 addMessageToAgentUI(botResponse, false, 'AI Assistant', botMessageResult.id);
             }
         }
+        lastMessageTime = new Date();
+        const summarizeButton = document.getElementById('summarizeButton');
+        if (summarizeButton) summarizeButton.disabled = false;
     } catch (error) {
         console.error("\u274C Error in message flow:", error);
         showErrorInUI('Failed to process message: ' + error.message);
@@ -945,6 +1095,9 @@ async function sendAgentMessage(content) {
         // Add message to agent UI immediately
         addMessageToAgentUI(content, true, 'Support Agent', sendChatMessageResult.id);
         agentInput.value = '';
+        lastMessageTime = new Date();
+        const summarizeButton = document.getElementById('summarizeButton');
+        if (summarizeButton) summarizeButton.disabled = false;
     } catch (error) {
         console.error("\u274C Error sending agent message:", error);
         console.error("\uD83E\uDDEA Error details:", {
@@ -966,8 +1119,10 @@ async function sendSystemMessage(content) {
             type: 'text'
         };
         const messageResult = await chatThreadClient.sendMessage(messageRequest, messageOptions);
-        // Add system message to both UIs
-        addMessageToCustomerUI(content, false, messageResult.id, false);
+        // Add system message to both UIs - passing the "System" sender
+        // Mark the message ID to identify it as a system message
+        const systemMessageId = `system-${messageResult.id}`;
+        addMessageToCustomerUI(content, false, systemMessageId, false);
         addMessageToAgentUI(content, false, 'System', messageResult.id);
     } catch (error) {
         console.error("\u274C Error sending system message:", error);
@@ -1065,6 +1220,8 @@ async function initializeChat() {
         addMessageToAgentUI(greeting, false, 'AI Assistant', botMessageResult.id);
         // Set up UI event listeners
         console.log("\uD83D\uDDB1\uFE0F Setting up UI event listeners...");
+        const summarizeButton = document.getElementById('summarizeButton');
+        if (summarizeButton) summarizeButton.addEventListener('click', handleSummarizeClick);
         customerSendButton.addEventListener('click', ()=>{
             console.log("\uD83D\uDDB1\uFE0F Customer send button clicked");
             sendCustomerMessage(customerInput.value);
@@ -27100,6 +27257,7 @@ const createCommunicationTokenCredentialPolicy = (credential)=>{
 // Azure OpenAI Configuration
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "SummaryService", ()=>SummaryService);
 const AZURE_OPENAI_ENDPOINT = 'https://alexper-test.openai.azure.com';
 const AZURE_OPENAI_KEY = '6f33abc23fe145e1942699fb513479b9';
 const DEPLOYMENT_NAME = 'gpt-35-turbo';
@@ -27136,7 +27294,7 @@ class BotService {
             const messages = [
                 {
                     role: "assistant",
-                    content: 'You are a virtual customer service agent for Contoso Airlines. Your job is to assist customers with their questions in a clear, concise, and professional manner. Your responses should be specific, helpful, and relevant, avoiding vague or overly general answers.\n\n### Guidelines for Responses:\n- Provide specific answers whenever possible. Avoid simply directing customers to a website unless absolutely necessary.\n- Use real policies and example fees when applicable, but note that prices may vary.\n- Stay on topic. Answer only the question asked and avoid unnecessary details.\n- Maintain a professional and friendly tone. Keep responses polite and easy to understand.\n\n### Example Responses:\n\n- **Customer:** "How much does it cost to bring my golf clubs?"\n  - **Correct:** "Golf clubs can be checked as baggage. Depending on your fare type, they may be included for free or subject to an oversize fee of $50\u2013$100."\n  - **Incorrect:** "Fees depend on your fare type. Check the website for more details."\n\n- **Customer:** "Can I change my flight date?"\n  - **Correct:** "Yes, you can change your flight date, but a change fee of $75\u2013$200 may apply based on your ticket type."\n  - **Incorrect:** "Flight changes depend on fare type. Visit our website for details."\n\n- **Customer:** "When does online check-in open?"\n  - **Correct:** "Online check-in opens 24 hours before departure and closes 60 minutes before domestic flights and 90 minutes before international flights."\n  - **Incorrect:** "Check-in times vary. Check our website for more information."\n\n### Additional Common Questions and Ideal Answers:\n- **Customer:** "Can I bring a carry-on bag for free?"\n  - "Yes, most tickets allow one free carry-on bag (22 x 14 x 9 inches) and one personal item. Basic Economy fares may have restrictions."\n- **Customer:** "What\u2019s the weight limit for checked baggage?"\n  - "Checked bags must not exceed 50 lbs (23 kg). Overweight fees apply for bags up to 70 lbs (32 kg)."\n- **Customer:** "What happens if my baggage is lost?"\n  - "Report your lost baggage at the airport or online. We will track your bag and update you within 24 hours. Compensation may be available if not found within 5 days."\n- **Customer:** "Can I bring a pet on the plane?"\n  - "Yes, small pets can travel in the cabin for a $125 fee. Larger pets must travel as checked baggage. Restrictions apply."\n- **Customer:** "How do I request wheelchair assistance?"\n  - "You can request wheelchair assistance during booking or by calling customer service 48 hours before departure."\n- **Customer:** "How long do refunds take?"\n  - "Refunds are typically processed within 7\u201310 business days."\n\nYour primary goal is to provide quick, clear, and helpful answers while maintaining professionalism. If you cannot provide an exact answer, offer useful guidelines or direct the customer to the best next step.'
+                    content: 'You are a virtual customer service agent for Contoso Airlines. Your job is to assist customers with their questions in a clear, concise, and professional manner. Your responses should be specific, helpful, and relevant, avoiding vague or overly general answers.\n\n### Guidelines for Responses:\n- Provide specific answers whenever possible. Avoid simply directing customers to a website unless absolutely necessary.\n- Use real policies and example fees when applicable, but note that prices may vary.\n- Stay on topic. Answer only the question asked and avoid unnecessary details.\n- Maintain a professional and friendly tone. Keep responses polite and easy to understand.\n\n### Example Responses:\n\n- **Customer:** "How much does it cost to bring my golf clubs?"\n  - **Correct:** "Golf clubs can be checked as baggage. Depending on your fare type, they may be included for free or subject to an oversize fee of $50\u2013$100."\n  - **Incorrect:** "Fees depend on your fare type. Check the website for more details."\n\n- **Customer:** "Can I change my flight date?"\n  - **Correct:** "Yes, you can change your flight date, but a change fee of $75\u2013$200 may apply based on your ticket type."\n  - **Incorrect:** "Flight changes depend on fare type. Visit our website for details."\n\n- **Customer:** "When does online check-in open?"\n  - **Correct:** "Online check-in opens 24 hours before departure and closes 60 minutes before domestic flights and 90 minutes before international flights."\n  - **Incorrect:** "Check-in times vary. Check our website for more information."\n\n### Additional Common Questions and Ideal Answers:\n- **Customer:** "Can I bring a carry-on bag for free?"\n  - "Yes, most tickets allow one free carry-on bag (22 x 14 x 9 inches) and one personal item. Basic Economy fares may have restrictions."\n- **Customer:** "What\'s the weight limit for checked baggage?"\n  - "Checked bags must not exceed 50 lbs (23 kg). Overweight fees apply for bags up to 70 lbs (32 kg)."\n- **Customer:** "What happens if my baggage is lost?"\n  - "Report your lost baggage at the airport or online. We will track your bag and update you within 24 hours. Compensation may be available if not found within 5 days."\n- **Customer:** "Can I bring a pet on the plane?"\n  - "Yes, small pets can travel in the cabin for a $125 fee. Larger pets must travel as checked baggage. Restrictions apply."\n- **Customer:** "How do I request wheelchair assistance?"\n  - "You can request wheelchair assistance during booking or by calling customer service 48 hours before departure."\n- **Customer:** "How long do refunds take?"\n  - "Refunds are typically processed within 7\u201310 business days."\n\nYour primary goal is to provide quick, clear, and helpful answers while maintaining professionalism. If you cannot provide an exact answer, offer useful guidelines or direct the customer to the best next step.'
                 },
                 ...this.conversationHistory
             ];
@@ -27170,6 +27328,110 @@ class BotService {
     constructor(){
         this.conversationHistory = [];
         this.isActive = true; // Bot starts active
+    }
+}
+class SummaryService {
+    async generateSummary(messages) {
+        try {
+            console.log('Starting summary generation with', messages.length, 'messages');
+            const systemPrompt = {
+                role: "system",
+                content: "You are a professional conversation summarizer for a customer service chat. Create a clear, complete, and concise summary of the conversation between a customer and customer service. Focus on:\n1. Customer's main inquiry or issue\n2. Key details provided by the customer\n3. Responses provided by customer service\n4. Current status and any unresolved questions\n\nKeep the summary brief but comprehensive, capturing the full conversation thread."
+            };
+            // Direct extraction of messages for debugging
+            console.log('RAW MESSAGE DUMP (first 3 messages):');
+            for(let i = 0; i < Math.min(3, messages.length); i++)console.log(`Message ${i + 1} FULL:`, JSON.stringify(messages[i]));
+            // Filter out system messages and prepare conversation history
+            const conversationMessages = [];
+            console.log('Converting Azure Chat API messages to OpenAI format...');
+            for(let i = 0; i < messages.length; i++){
+                const msg = messages[i];
+                // Advanced content extraction
+                let messageContent = null;
+                const senderName = msg.senderDisplayName || 'Unknown';
+                // Try multiple ways to extract content
+                if (msg.content && typeof msg.content === 'string') messageContent = msg.content;
+                else if (msg.content && typeof msg.content === 'object') messageContent = msg.content.message || msg.content.content || '';
+                else if (msg.message) messageContent = msg.message;
+                else {
+                    // Look for content in other properties
+                    const msgStr = JSON.stringify(msg);
+                    const contentMatch = msgStr.match(/"content":"([^"]+)"/);
+                    if (contentMatch && contentMatch[1]) messageContent = contentMatch[1];
+                }
+                // Make sure we have content
+                if (!messageContent || messageContent.trim() === '') {
+                    console.log(`Skipping message ${i + 1} from ${senderName}: no content found`);
+                    continue;
+                }
+                // Skip system messages
+                if (senderName === 'System') {
+                    console.log(`Skipping system message ${i + 1}: ${messageContent.substring(0, 30)}...`);
+                    continue;
+                }
+                // Determine role based on sender
+                let role = 'assistant';
+                if (senderName === 'Sarah Jones') role = 'user';
+                else if (senderName === 'AI Assistant') role = 'assistant';
+                else if (senderName === 'Support Agent') role = 'assistant';
+                const formattedMessage = {
+                    role: role,
+                    content: messageContent
+                };
+                conversationMessages.push(formattedMessage);
+                console.log(`Added message ${i + 1} from ${senderName} (${role}): ${messageContent.substring(0, 50)}...`);
+            }
+            if (conversationMessages.length === 0) {
+                console.log('No valid messages to summarize');
+                return "No messages to summarize yet.";
+            }
+            console.log(`Prepared ${conversationMessages.length} messages for summary`);
+            // Create the "story" of the conversation in chronological order
+            const sortedMessages = [
+                ...conversationMessages
+            ];
+            console.log('Conversation flow:');
+            sortedMessages.forEach((msg, i)=>{
+                console.log(`${i + 1}. ${msg.role}: ${msg.content.substring(0, 30)}...`);
+            });
+            // Make API call with the full conversation
+            const requestBody = {
+                messages: [
+                    systemPrompt,
+                    ...sortedMessages
+                ],
+                temperature: 0.5,
+                max_tokens: 500
+            };
+            console.log('Request payload size:', JSON.stringify(requestBody).length, 'characters');
+            const response = await fetch(`${AZURE_OPENAI_ENDPOINT}/openai/deployments/${DEPLOYMENT_NAME}/chat/completions?api-version=${API_VERSION}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': AZURE_OPENAI_KEY
+                },
+                body: JSON.stringify(requestBody)
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API response error:', response.status, errorText);
+                throw new Error(`API call failed: ${response.statusText}. Details: ${errorText}`);
+            }
+            const data = await response.json();
+            console.log('API response received successfully');
+            this.lastSummaryTime = new Date();
+            return data.choices[0].message.content;
+        } catch (error) {
+            console.error('Error generating summary:', error);
+            throw error;
+        }
+    }
+    shouldAllowNewSummary(messages, lastMessageTime) {
+        // Always allow a summary
+        return true;
+    }
+    constructor(){
+        this.lastSummaryTime = null;
     }
 }
 exports.default = BotService;
