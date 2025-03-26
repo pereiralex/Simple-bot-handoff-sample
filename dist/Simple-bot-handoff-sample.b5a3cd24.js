@@ -804,8 +804,45 @@ async function createChatThread() {
         throw error;
     }
 }
-// Add a message to the customer UI
-function addMessageToCustomerUI(message, isCustomer = false, messageId = null) {
+// Modify addMessageToAgentUI function to handle bot messages
+function addMessageToAgentUI(message, isAgent = false, sender = null, messageId = null) {
+    console.log(`\u{1F5A5}\u{FE0F} Adding message to agent UI - Message: "${message}", isAgent: ${isAgent}, sender: ${sender}, messageId: ${messageId}`);
+    // If this message ID has already been displayed, don't show it again
+    if (messageId && displayedMessageIds.has(`agent-${messageId}`)) {
+        console.log(`\u{1F4CB} Skipping duplicate agent message with ID: ${messageId}`);
+        return;
+    }
+    // Mark this message as displayed
+    if (messageId) {
+        displayedMessageIds.add(`agent-${messageId}`);
+        console.log(`\u{2705} Marked message ${messageId} as displayed in agent UI`);
+    }
+    try {
+        const messageDiv = document.createElement('div');
+        // Add 'bot' class if the sender is AI Assistant
+        const isBot = sender === 'AI Assistant';
+        messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'}`;
+        // Add sender if provided
+        if (sender) {
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'sender';
+            senderDiv.textContent = sender;
+            messageDiv.appendChild(senderDiv);
+        }
+        // Add message content
+        const contentDiv = document.createElement('div');
+        contentDiv.textContent = message;
+        messageDiv.appendChild(contentDiv);
+        agentMessagesContainer.appendChild(messageDiv);
+        // Scroll to bottom
+        agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
+        console.log("\u2705 Message added to agent UI successfully");
+    } catch (error) {
+        console.error("\u274C Error adding message to agent UI:", error);
+    }
+}
+// Modify addMessageToCustomerUI to handle bot messages like received messages
+function addMessageToCustomerUI(message, isCustomer = false, messageId = null, isBot = false) {
     console.log(`\u{1F5A5}\u{FE0F} Adding message to customer UI - Message: "${message}", isCustomer: ${isCustomer}, messageId: ${messageId}`);
     // If this message ID has already been displayed, don't show it again
     if (messageId && displayedMessageIds.has(`customer-${messageId}`)) {
@@ -837,42 +874,7 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null) {
         console.error("\u274C Error adding message to customer UI:", error);
     }
 }
-// Add a message to the agent UI
-function addMessageToAgentUI(message, isAgent = false, sender = null, messageId = null) {
-    console.log(`\u{1F5A5}\u{FE0F} Adding message to agent UI - Message: "${message}", isAgent: ${isAgent}, sender: ${sender}, messageId: ${messageId}`);
-    // If this message ID has already been displayed, don't show it again
-    if (messageId && displayedMessageIds.has(`agent-${messageId}`)) {
-        console.log(`\u{1F4CB} Skipping duplicate agent message with ID: ${messageId}`);
-        return;
-    }
-    // Mark this message as displayed
-    if (messageId) {
-        displayedMessageIds.add(`agent-${messageId}`);
-        console.log(`\u{2705} Marked message ${messageId} as displayed in agent UI`);
-    }
-    try {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `agent-message ${isAgent ? 'agent' : 'customer'}`;
-        // Add sender if provided
-        if (sender) {
-            const senderDiv = document.createElement('div');
-            senderDiv.className = 'sender';
-            senderDiv.textContent = sender;
-            messageDiv.appendChild(senderDiv);
-        }
-        // Add message content
-        const contentDiv = document.createElement('div');
-        contentDiv.textContent = message;
-        messageDiv.appendChild(contentDiv);
-        agentMessagesContainer.appendChild(messageDiv);
-        // Scroll to bottom
-        agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
-        console.log("\u2705 Message added to agent UI successfully");
-    } catch (error) {
-        console.error("\u274C Error adding message to agent UI:", error);
-    }
-}
-// Modify sendCustomerMessage to handle bot responses
+// Update the bot message handling in sendCustomerMessage
 async function sendCustomerMessage(content) {
     if (!content.trim()) {
         console.log("\u26A0\uFE0F Empty message - not sending");
@@ -890,7 +892,7 @@ async function sendCustomerMessage(content) {
         };
         const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
         // Add message to customer UI immediately
-        addMessageToCustomerUI(content, true, sendChatMessageResult.id);
+        addMessageToCustomerUI(content, true, sendChatMessageResult.id, false);
         addMessageToAgentUI(content, false, 'Sarah Jones', sendChatMessageResult.id);
         // Clear input
         customerInput.value = '';
@@ -907,8 +909,8 @@ async function sendCustomerMessage(content) {
                     type: 'text'
                 };
                 const botMessageResult = await chatThreadClient.sendMessage(botMessageRequest, botMessageOptions);
-                // Add bot response to both UIs
-                addMessageToCustomerUI(botResponse, false, botMessageResult.id);
+                // Add bot response to both UIs with bot styling
+                addMessageToCustomerUI(botResponse, false, botMessageResult.id, true);
                 addMessageToAgentUI(botResponse, false, 'AI Assistant', botMessageResult.id);
             }
         }
@@ -965,7 +967,7 @@ async function sendSystemMessage(content) {
         };
         const messageResult = await chatThreadClient.sendMessage(messageRequest, messageOptions);
         // Add system message to both UIs
-        addMessageToCustomerUI(content, false, messageResult.id);
+        addMessageToCustomerUI(content, false, messageResult.id, false);
         addMessageToAgentUI(content, false, 'System', messageResult.id);
     } catch (error) {
         console.error("\u274C Error sending system message:", error);
@@ -993,7 +995,7 @@ async function setupEventHandlers() {
             // If the message is from the agent, show in customer view as a received message
             if (isAgent) {
                 console.log("\uD83D\uDD0D Agent message detected - adding to customer UI");
-                addMessageToCustomerUI(messageContent, false, messageId);
+                addMessageToCustomerUI(messageContent, false, messageId, false);
             }
             // If the message is from the customer, show in agent view
             if (isCustomer) {
@@ -1049,7 +1051,18 @@ async function initializeChat() {
         console.log("\u2705 Chat thread client created:", chatThreadClient);
         // Start bot conversation with greeting
         const greeting = await botService.startConversation();
-        await sendSystemMessage(greeting);
+        // Send bot greeting through ACS
+        const botMessageRequest = {
+            content: greeting
+        };
+        const botMessageOptions = {
+            senderDisplayName: 'AI Assistant',
+            type: 'text'
+        };
+        const botMessageResult = await chatThreadClient.sendMessage(botMessageRequest, botMessageOptions);
+        // Add bot greeting to both UIs with bot styling
+        addMessageToCustomerUI(greeting, false, botMessageResult.id, true);
+        addMessageToAgentUI(greeting, false, 'AI Assistant', botMessageResult.id);
         // Set up UI event listeners
         console.log("\uD83D\uDDB1\uFE0F Setting up UI event listeners...");
         customerSendButton.addEventListener('click', ()=>{
@@ -27096,7 +27109,7 @@ class BotService {
     async startConversation() {
         const greeting = {
             role: "assistant",
-            content: "Hello! I'm an automated customer service assistant. I'm here to help you with your questions. How can I assist you today?"
+            content: "\uD83D\uDC4B Hello! I'm the Contoso Airlines automated customer service assistant. How can I assist you today?"
         };
         this.conversationHistory.push(greeting);
         return greeting.content;
@@ -27122,8 +27135,8 @@ class BotService {
             // Prepare the messages array with system prompt and conversation history
             const messages = [
                 {
-                    role: "system",
-                    content: "You are an customer service AI assistant for Contoso Airlines. Your role is to help customers with basic inquiries about baggage fees, flight information, and general policies. Be professional, friendly, clear, and concise in your responses. You haven't been armed with the specific information needed to answer most questions so instead make up a reasonable answer based on your training data. If you cannot help with something, politely acknowledge that and suggest speaking with a human agent."
+                    role: "assistant",
+                    content: 'You are a virtual customer service agent for Contoso Airlines. Your job is to assist customers with their questions in a clear, concise, and professional manner. Your responses should be specific, helpful, and relevant, avoiding vague or overly general answers.\n\n### Guidelines for Responses:\n- Provide specific answers whenever possible. Avoid simply directing customers to a website unless absolutely necessary.\n- Use real policies and example fees when applicable, but note that prices may vary.\n- Stay on topic. Answer only the question asked and avoid unnecessary details.\n- Maintain a professional and friendly tone. Keep responses polite and easy to understand.\n\n### Example Responses:\n\n- **Customer:** "How much does it cost to bring my golf clubs?"\n  - **Correct:** "Golf clubs can be checked as baggage. Depending on your fare type, they may be included for free or subject to an oversize fee of $50\u2013$100."\n  - **Incorrect:** "Fees depend on your fare type. Check the website for more details."\n\n- **Customer:** "Can I change my flight date?"\n  - **Correct:** "Yes, you can change your flight date, but a change fee of $75\u2013$200 may apply based on your ticket type."\n  - **Incorrect:** "Flight changes depend on fare type. Visit our website for details."\n\n- **Customer:** "When does online check-in open?"\n  - **Correct:** "Online check-in opens 24 hours before departure and closes 60 minutes before domestic flights and 90 minutes before international flights."\n  - **Incorrect:** "Check-in times vary. Check our website for more information."\n\n### Additional Common Questions and Ideal Answers:\n- **Customer:** "Can I bring a carry-on bag for free?"\n  - "Yes, most tickets allow one free carry-on bag (22 x 14 x 9 inches) and one personal item. Basic Economy fares may have restrictions."\n- **Customer:** "What\u2019s the weight limit for checked baggage?"\n  - "Checked bags must not exceed 50 lbs (23 kg). Overweight fees apply for bags up to 70 lbs (32 kg)."\n- **Customer:** "What happens if my baggage is lost?"\n  - "Report your lost baggage at the airport or online. We will track your bag and update you within 24 hours. Compensation may be available if not found within 5 days."\n- **Customer:** "Can I bring a pet on the plane?"\n  - "Yes, small pets can travel in the cabin for a $125 fee. Larger pets must travel as checked baggage. Restrictions apply."\n- **Customer:** "How do I request wheelchair assistance?"\n  - "You can request wheelchair assistance during booking or by calling customer service 48 hours before departure."\n- **Customer:** "How long do refunds take?"\n  - "Refunds are typically processed within 7\u201310 business days."\n\nYour primary goal is to provide quick, clear, and helpful answers while maintaining professionalism. If you cannot provide an exact answer, offer useful guidelines or direct the customer to the best next step.'
                 },
                 ...this.conversationHistory
             ];

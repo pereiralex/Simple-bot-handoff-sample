@@ -242,7 +242,7 @@
         }
         
         .takeover-button {
-            padding: 8px 16px;
+            padding: 8px 12px;
             background-color: #0084ff;
             color: white;
             border: none;
@@ -281,16 +281,17 @@
         
         .agent-chat-input input {
             flex: 1;
-            padding: 12px 15px;
+            padding: 12px 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
             outline: none;
             font-size: 14px;
+            max-height: 240px;
         }
         
         .agent-chat-input button {
-            margin-left: 10px;
-            padding: 12px 20px;
+            margin-left: 8px;
+            padding: 4px 12px;
             background: #0084ff;
             color: white;
             border: none;
@@ -341,11 +342,24 @@
             border: 1px solid #c7e8ff;
         }
         
+        .agent-message.bot {
+            align-self: flex-end;
+            background: #e9e9e9;
+            border: 1px solid #dedede;
+        }
+        
         .agent-message .sender {
             font-size: 12px;
             font-weight: 500;
             margin-bottom: 5px;
             color: #666;
+        }
+        
+        .message.bot {
+            align-self: flex-end;
+            background: #e9e9e9;
+            color: #333;
+            border-bottom-right-radius: 4px;
         }
     </style>
 </head>
@@ -419,7 +433,7 @@
                             <div class="avatar">SJ</div>
                             <span>Sarah Jones</span>
                         </div>
-                        <button id="takeoverButton" class="takeover-button">Take Over Chat</button>
+                        <button id="takeoverButton" class="takeover-button">Take Over</button>
                     </div>
                     
                     <div id="agentMessages" class="agent-chat-messages">

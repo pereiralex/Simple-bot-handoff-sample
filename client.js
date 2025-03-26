@@ -164,8 +164,53 @@ async function createChatThread() {
     }
 }
 
-// Add a message to the customer UI
-function addMessageToCustomerUI(message, isCustomer = false, messageId = null) {
+// Modify addMessageToAgentUI function to handle bot messages
+function addMessageToAgentUI(message, isAgent = false, sender = null, messageId = null) {
+    console.log(`🖥️ Adding message to agent UI - Message: "${message}", isAgent: ${isAgent}, sender: ${sender}, messageId: ${messageId}`);
+    
+    // If this message ID has already been displayed, don't show it again
+    if (messageId && displayedMessageIds.has(`agent-${messageId}`)) {
+        console.log(`📋 Skipping duplicate agent message with ID: ${messageId}`);
+        return;
+    }
+    
+    // Mark this message as displayed
+    if (messageId) {
+        displayedMessageIds.add(`agent-${messageId}`);
+        console.log(`✅ Marked message ${messageId} as displayed in agent UI`);
+    }
+    
+    try {
+        const messageDiv = document.createElement('div');
+        // Add 'bot' class if the sender is AI Assistant
+        const isBot = sender === 'AI Assistant';
+        messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'}`;
+        
+        // Add sender if provided
+        if (sender) {
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'sender';
+            senderDiv.textContent = sender;
+            messageDiv.appendChild(senderDiv);
+        }
+        
+        // Add message content
+        const contentDiv = document.createElement('div');
+        contentDiv.textContent = message;
+        messageDiv.appendChild(contentDiv);
+        
+        agentMessagesContainer.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
+        console.log('✅ Message added to agent UI successfully');
+    } catch (error) {
+        console.error('❌ Error adding message to agent UI:', error);
+    }
+}
+
+// Modify addMessageToCustomerUI to handle bot messages like received messages
+function addMessageToCustomerUI(message, isCustomer = false, messageId = null, isBot = false) {
     console.log(`🖥️ Adding message to customer UI - Message: "${message}", isCustomer: ${isCustomer}, messageId: ${messageId}`);
     
     // If this message ID has already been displayed, don't show it again
@@ -201,50 +246,7 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null) {
     }
 }
 
-// Add a message to the agent UI
-function addMessageToAgentUI(message, isAgent = false, sender = null, messageId = null) {
-    console.log(`🖥️ Adding message to agent UI - Message: "${message}", isAgent: ${isAgent}, sender: ${sender}, messageId: ${messageId}`);
-    
-    // If this message ID has already been displayed, don't show it again
-    if (messageId && displayedMessageIds.has(`agent-${messageId}`)) {
-        console.log(`📋 Skipping duplicate agent message with ID: ${messageId}`);
-        return;
-    }
-    
-    // Mark this message as displayed
-    if (messageId) {
-        displayedMessageIds.add(`agent-${messageId}`);
-        console.log(`✅ Marked message ${messageId} as displayed in agent UI`);
-    }
-    
-    try {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `agent-message ${isAgent ? 'agent' : 'customer'}`;
-        
-        // Add sender if provided
-        if (sender) {
-            const senderDiv = document.createElement('div');
-            senderDiv.className = 'sender';
-            senderDiv.textContent = sender;
-            messageDiv.appendChild(senderDiv);
-        }
-        
-        // Add message content
-        const contentDiv = document.createElement('div');
-        contentDiv.textContent = message;
-        messageDiv.appendChild(contentDiv);
-        
-        agentMessagesContainer.appendChild(messageDiv);
-        
-        // Scroll to bottom
-        agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
-        console.log('✅ Message added to agent UI successfully');
-    } catch (error) {
-        console.error('❌ Error adding message to agent UI:', error);
-    }
-}
-
-// Modify sendCustomerMessage to handle bot responses
+// Update the bot message handling in sendCustomerMessage
 async function sendCustomerMessage(content) {
     if (!content.trim()) {
         console.log('⚠️ Empty message - not sending');
@@ -266,7 +268,7 @@ async function sendCustomerMessage(content) {
         const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
         
         // Add message to customer UI immediately
-        addMessageToCustomerUI(content, true, sendChatMessageResult.id);
+        addMessageToCustomerUI(content, true, sendChatMessageResult.id, false);
         addMessageToAgentUI(content, false, 'Sarah Jones', sendChatMessageResult.id);
         
         // Clear input
@@ -287,8 +289,8 @@ async function sendCustomerMessage(content) {
                 
                 const botMessageResult = await chatThreadClient.sendMessage(botMessageRequest, botMessageOptions);
                 
-                // Add bot response to both UIs
-                addMessageToCustomerUI(botResponse, false, botMessageResult.id);
+                // Add bot response to both UIs with bot styling
+                addMessageToCustomerUI(botResponse, false, botMessageResult.id, true);
                 addMessageToAgentUI(botResponse, false, 'AI Assistant', botMessageResult.id);
             }
         }
@@ -357,7 +359,7 @@ async function sendSystemMessage(content) {
         const messageResult = await chatThreadClient.sendMessage(messageRequest, messageOptions);
         
         // Add system message to both UIs
-        addMessageToCustomerUI(content, false, messageResult.id);
+        addMessageToCustomerUI(content, false, messageResult.id, false);
         addMessageToAgentUI(content, false, 'System', messageResult.id);
     } catch (error) {
         console.error('❌ Error sending system message:', error);
@@ -392,7 +394,7 @@ async function setupEventHandlers() {
             // If the message is from the agent, show in customer view as a received message
             if (isAgent) {
                 console.log('🔍 Agent message detected - adding to customer UI');
-                addMessageToCustomerUI(messageContent, false, messageId);
+                addMessageToCustomerUI(messageContent, false, messageId, false);
             }
             
             // If the message is from the customer, show in agent view
@@ -466,7 +468,21 @@ async function initializeChat() {
         
         // Start bot conversation with greeting
         const greeting = await botService.startConversation();
-        await sendSystemMessage(greeting);
+        
+        // Send bot greeting through ACS
+        const botMessageRequest = {
+            content: greeting
+        };
+        const botMessageOptions = {
+            senderDisplayName: 'AI Assistant',
+            type: 'text'
+        };
+        
+        const botMessageResult = await chatThreadClient.sendMessage(botMessageRequest, botMessageOptions);
+        
+        // Add bot greeting to both UIs with bot styling
+        addMessageToCustomerUI(greeting, false, botMessageResult.id, true);
+        addMessageToAgentUI(greeting, false, 'AI Assistant', botMessageResult.id);
         
         // Set up UI event listeners
         console.log('🖱️ Setting up UI event listeners...');
