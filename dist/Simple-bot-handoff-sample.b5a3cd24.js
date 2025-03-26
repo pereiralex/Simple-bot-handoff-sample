@@ -719,12 +719,37 @@ let isAgentActive = false;
 // Initialize summary service
 const summaryService = new (0, _botServiceJs.SummaryService)();
 let lastMessageTime = null;
-// Add takeover button handler
-const takeoverButton = document.getElementById('takeoverButton');
-takeoverButton.addEventListener('click', async ()=>{
+// Function to show AI handling banner and disable input
+function showAIHandlingBanner() {
+    // Remove any existing banner first
+    removeAIHandlingBanner();
+    // Create banner
+    const bannerDiv = document.createElement('div');
+    bannerDiv.className = 'ai-handling-banner';
+    bannerDiv.id = 'aiHandlingBanner';
+    // Add content to banner
+    bannerDiv.innerHTML = `
+        <span class="ai-icon">\u{1F916}</span>
+        <span>AI Assistant is handling this conversation</span>
+        <button class="take-over-link" id="bannerTakeOverBtn">Take Over</button>
+    `;
+    // Hide the input area and add the banner in its place
+    const agentChat = document.querySelector('.agent-chat');
+    const inputArea = document.querySelector('.agent-chat-input');
+    if (agentChat && inputArea) {
+        // Hide the input area
+        inputArea.style.display = 'none';
+        // Add banner to the agent chat area
+        agentChat.appendChild(bannerDiv);
+        // Add event listener to the Take Over button in the banner
+        const bannerTakeOverBtn = document.getElementById('bannerTakeOverBtn');
+        if (bannerTakeOverBtn) bannerTakeOverBtn.addEventListener('click', handleTakeOver);
+    }
+}
+// Function to handle taking over the conversation
+async function handleTakeOver() {
     if (!isAgentActive) {
         isAgentActive = true;
-        takeoverButton.disabled = true;
         // Deactivate bot and send handoff message
         const handoffMessage = await botService.deactivate();
         // Send system message about agent joining
@@ -732,8 +757,34 @@ takeoverButton.addEventListener('click', async ()=>{
         // Send both messages through ACS
         await sendSystemMessage(handoffMessage);
         await sendSystemMessage(agentJoinMessage);
+        // Remove the AI handling banner and enable input
+        removeAIHandlingBanner();
+        enableAgentInput();
     }
-});
+}
+// Function to remove AI handling banner
+function removeAIHandlingBanner() {
+    const existingBanner = document.getElementById('aiHandlingBanner');
+    if (existingBanner) existingBanner.remove();
+    // Show the input area again
+    const inputArea = document.querySelector('.agent-chat-input');
+    if (inputArea) inputArea.style.display = 'flex';
+}
+// Function to enable agent input
+function enableAgentInput() {
+    const inputArea = document.querySelector('.agent-chat-input');
+    if (inputArea) {
+        inputArea.classList.remove('disabled');
+        inputArea.style.display = 'flex';
+        const input = document.getElementById('agentInput');
+        const sendButton = document.getElementById('agentSendButton');
+        if (input) {
+            input.disabled = false;
+            input.placeholder = 'Enter a message';
+        }
+        if (sendButton) sendButton.disabled = false;
+    }
+}
 // Function to show error message in UI
 function showErrorInUI(message) {
     console.error("\uD83D\uDEA8 Showing error in UI:", message);
@@ -1177,7 +1228,7 @@ async function setupEventHandlers() {
         return false;
     }
 }
-// Modify initializeChat to start bot conversation
+// Modify initializeChat to start bot conversation and show banner
 async function initializeChat() {
     console.log("\uD83D\uDE80 Starting chat initialization...");
     try {
@@ -1218,6 +1269,8 @@ async function initializeChat() {
         // Add bot greeting to both UIs with bot styling
         addMessageToCustomerUI(greeting, false, botMessageResult.id, true);
         addMessageToAgentUI(greeting, false, 'AI Assistant', botMessageResult.id);
+        // Show the AI handling banner and hide the input box since the bot is active
+        showAIHandlingBanner();
         // Set up UI event listeners
         console.log("\uD83D\uDDB1\uFE0F Setting up UI event listeners...");
         const summarizeButton = document.getElementById('summarizeButton');

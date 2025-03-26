@@ -368,7 +368,7 @@
 .agent-message {
   word-wrap: break-word;
   border-radius: 4px;
-  max-width: calc(100% - 50px);
+  max-width: calc(100% - 80px);
   padding: 10px 15px;
 }
 
@@ -420,6 +420,41 @@
   width: 100%;
   margin-bottom: 8px;
   display: flex;
+}
+
+.ai-handling-banner {
+  color: #0078d4;
+  box-sizing: border-box;
+  background-color: #e8f4fd;
+  border-top: 1px solid #e1e1e1;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 14px;
+  display: flex;
+}
+
+.ai-handling-banner .ai-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.ai-handling-banner .take-over-link {
+  color: #fff;
+  cursor: pointer;
+  background-color: #007bff;
+  border: none;
+  border-radius: 4px;
+  margin-left: 15px;
+  padding: 8px 16px;
+  font-weight: 500;
+  transition: background-color .2s;
+}
+
+.ai-handling-banner .take-over-link:hover {
+  background-color: #0056b3;
 }
 
 .summary-card {
@@ -570,7 +605,6 @@
                                 <span>Sarah Jones</span>
                             </div>
                             <div class="action-buttons">
-                                <button id="takeoverButton" class="action-button">Take Over</button>
                                 <button id="summarizeButton" class="action-button" onclick="handleSummarizeClick()">Summarize</button>
                             </div>
                         </div>

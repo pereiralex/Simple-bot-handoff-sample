@@ -377,7 +377,7 @@
         .agent-message {
             padding: 10px 15px;
             border-radius: 4px;
-            max-width: calc(100% - 50px);
+            max-width: calc(100% - 80px);
             word-wrap: break-word;
         }
         
@@ -433,6 +433,42 @@
             margin-bottom: 8px;
         }
         
+        /* AI Handling Banner */
+        .ai-handling-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e8f4fd;
+            color: #0078d4;
+            padding: 12px 16px;
+            font-size: 14px;
+            margin: 0;
+            width: 100%;
+            box-sizing: border-box;
+            border-top: 1px solid #e1e1e1;
+        }
+        
+        .ai-handling-banner .ai-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+        
+        .ai-handling-banner .take-over-link {
+            margin-left: 15px;
+            background-color: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .ai-handling-banner .take-over-link:hover {
+            background-color: #0056b3;
+        }
+        
         .summary-card {
             max-width: 60%;
             background: white;
@@ -442,7 +478,6 @@
             margin: 10px 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-    
         
         .action-button {
             padding: 8px 16px;
@@ -584,7 +619,6 @@
                                 <span>Sarah Jones</span>
                             </div>
                             <div class="action-buttons">
-                                <button id="takeoverButton" class="action-button">Take Over</button>
                                 <button id="summarizeButton" class="action-button" onclick="handleSummarizeClick()">Summarize</button>
                             </div>
                         </div>
