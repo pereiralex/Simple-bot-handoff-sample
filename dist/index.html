@@ -78,8 +78,16 @@
 .support-chat-header {
   background: #f8f8f8;
   border-bottom: 1px solid #eee;
+  flex-direction: row;
+  justify-content: flex-start;
   align-items: center;
   padding: 15px;
+  display: flex;
+}
+
+.support-chat-header .left-section {
+  flex-direction: column;
+  margin-left: 10px;
   display: flex;
 }
 
@@ -91,9 +99,24 @@
   align-items: center;
   width: 30px;
   height: 30px;
-  margin-right: 10px;
   font-size: 14px;
   display: flex;
+}
+
+.online-indicator {
+  color: #2e8b57;
+  align-items: center;
+  margin-top: 2px;
+  font-size: 12px;
+  display: flex;
+}
+
+.online-indicator .dot {
+  background-color: #2ecc71;
+  border-radius: 50%;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
 }
 
 .support-chat-messages {
@@ -321,14 +344,13 @@
 }
 
 .agent-chat-input button {
-  color: #fff;
+  color: #000;
   cursor: pointer;
-  background: #0084ff;
-  border: none;
+  background-color: #fff;
+  border: 1px solid #ddd;
   border-radius: 4px;
   margin-left: 8px;
   padding: 4px 12px;
-  font-weight: 500;
 }
 
 .message {
@@ -348,7 +370,7 @@
 
 .message.received {
   color: #000;
-  background: #e5e5ea;
+  background: #eee;
   border-bottom-left-radius: 4px;
   align-self: flex-start;
 }
@@ -368,7 +390,7 @@
 .agent-message {
   word-wrap: break-word;
   border-radius: 4px;
-  max-width: calc(100% - 80px);
+  max-width: calc(100% - 160px);
   padding: 10px 15px;
 }
 
@@ -477,7 +499,7 @@
 }
 
 .action-button:disabled {
-  opacity: .6;
+  opacity: .4;
   cursor: not-allowed;
 }
 
@@ -492,11 +514,11 @@
 
 #summarizeButton {
   color: #fff;
-  background-color: #6c757d;
+  background-color: #007bff;
 }
 
 #summarizeButton:hover:not(:disabled) {
-  background-color: #5a6268;
+  background-color: #0056b3;
 }
 
 .agent-chat-messages > div {
@@ -544,8 +566,14 @@
         <div class="customer-section">
             <div class="support-chat-container">
                 <div class="support-chat-header">
-                    <div class="avatar">S</div>
-                    Support chat
+                    <div class="avatar">✈️</div>
+                    <div class="left-section">
+                        Airline customer support
+                        <div class="online-indicator">
+                            <div class="dot"></div>
+                            Online
+                        </div>
+                    </div>
                 </div>
                 <div id="customerMessages" class="support-chat-messages">
                     <!-- Messages will be added here by JavaScript -->

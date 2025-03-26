@@ -575,7 +575,7 @@ async function sendAgentMessage(content) {
         senderDisplayName: 'Support Agent',
         type: 'text'
     };
-    
+
     console.log('📦 Message request:', sendMessageRequest);
     console.log('⚙️ Message options:', sendMessageOptions);
     
@@ -585,7 +585,7 @@ async function sendAgentMessage(content) {
         }
         
         console.log('⏳ Awaiting sendMessage response...');
-        const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
+    const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
         console.log(`✅ Agent message sent successfully! Message ID: ${sendChatMessageResult.id}`);
         console.log('📊 Send result details:', sendChatMessageResult);
         

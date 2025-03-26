@@ -85,7 +85,15 @@
             background: #f8f8f8;
             border-bottom: 1px solid #eee;
             display: flex;
+            flex-direction: row;
             align-items: center;
+            justify-content: flex-start;
+        }
+        
+        .support-chat-header .left-section {
+            display: flex;
+            flex-direction: column;
+            margin-left: 10px;
         }
         
         .support-chat-header .avatar {
@@ -93,12 +101,27 @@
             height: 30px;
             background: #e1e1e1;
             border-radius: 50%;
-            margin-right: 10px;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 14px;
             color: #555;
+        }
+        
+        .online-indicator {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #2e8b57;
+            margin-top: 2px;
+        }
+        
+        .online-indicator .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #2ecc71;
+            border-radius: 50%;
+            margin-right: 4px;
         }
         
         .support-chat-messages {
@@ -330,12 +353,11 @@
         .agent-chat-input button {
             margin-left: 8px;
             padding: 4px 12px;
-            background: #0084ff;
-            color: white;
-            border: none;
+            color: black;
+            background-color: white;
+            border: 1px solid #ddd;
             border-radius: 4px;
             cursor: pointer;
-            font-weight: 500;
         }
         
         /* Message bubbles styling */
@@ -356,7 +378,7 @@
         
         .message.received {
             align-self: flex-start;
-            background: #e5e5ea;
+            background: #eee;
             color: black;
             border-bottom-left-radius: 4px;
         }
@@ -377,7 +399,7 @@
         .agent-message {
             padding: 10px 15px;
             border-radius: 4px;
-            max-width: calc(100% - 80px);
+            max-width: calc(100% - 160px);
             word-wrap: break-word;
         }
         
@@ -489,7 +511,7 @@
         }
         
         .action-button:disabled {
-            opacity: 0.6;
+            opacity: 0.4;
             cursor: not-allowed;
         }
         
@@ -503,12 +525,12 @@
         }
         
         #summarizeButton {
-            background-color: #6c757d;
+            background-color: #007bff;
             color: white;
         }
         
         #summarizeButton:hover:not(:disabled) {
-            background-color: #5a6268;
+            background-color: #0056b3;
         }
         
         /* Message with avatar wrapper styling */
@@ -558,8 +580,14 @@
         <div class="customer-section">
             <div class="support-chat-container">
                 <div class="support-chat-header">
-                    <div class="avatar">S</div>
-                    Support chat
+                    <div class="avatar">✈️</div>
+                    <div class="left-section">
+                        Airline customer support
+                        <div class="online-indicator">
+                            <div class="dot"></div>
+                            Online
+                        </div>
+                    </div>
                 </div>
                 <div id="customerMessages" class="support-chat-messages">
                     <!-- Messages will be added here by JavaScript -->
