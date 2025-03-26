@@ -7,30 +7,86 @@ products:
 - azure-communication-services
 ---
 
-# Add chat to your application
+# Customer Service Chat with AI Assistant Handoff
 
-This code sample walks through the process of integration Azure Communication Services real time chat into your JavaScript application.
+This application demonstrates a complete customer service chat experience with an AI-powered assistant that can automatically handle customer inquiries and seamlessly hand off to a human agent when needed.
 
-This quickstart sample includes the code that is explained as part of [this document](https://docs.microsoft.com/azure/communication-services/quickstarts/chat/get-started?pivots=programming-language-javascript). See that document for additional details on how this sample works.
+## Features
+
+- **Dual Interface**: Customer-facing chat widget and agent portal in a single demo
+- **AI Assistant**: Automatic handling of customer inquiries using Azure OpenAI
+- **Handoff Capability**: Smooth transition from AI to human agent when needed
+- **Real-time Chat**: Powered by Azure Communication Services
+- **System Messages**: Clear indicators when the AI or agent joins the conversation
+- **Conversation Summary**: Agents can generate AI-powered summaries of the conversation
+- **Visual Status Indicators**: Online status and AI handling notifications
+
+## Architecture
+
+The application consists of:
+
+1. **Customer Interface**: A clean, modern chat widget for customers to communicate with support
+2. **Agent Portal**: A comprehensive interface for agents to monitor conversations and take over when needed
+3. **Bot Service**: An AI-powered service using Azure OpenAI to provide automated responses
+4. **Summary Service**: AI service that can generate conversation summaries for agents
 
 ## Prerequisites
-- An Azure account with an active subscription. [Create an account for free](https://azure.microsoft.com/free/?WT.mc_id=A261C142F).
-- [Node.js](https://nodejs.org/en/) Active LTS and Maintenance LTS versions (8.11.1 and 10.14.1)
-- An active Communication Services resource. [Create a Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource).
-- A User Access Token to instantiate the call client. [Learn how to create and manage user access tokens](https://docs.microsoft.com/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-javascript).
-- Create three ACS Users and issue them a user access token [User Access Token](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-javascript). Be sure to set the scope to chat, and note the token string as well as the userId string. The full demo creates a thread with two initial participants and then adds a third participant to the thread.
 
+- An Azure account with an active subscription
+- [Node.js](https://nodejs.org/) (LTS version recommended)
+- An active Azure Communication Services resource
+- Azure OpenAI service with a configured deployment
+- User Access Tokens for Azure Communication Services
 
-## Run the code
-npm run start
+## Configuration
 
-Open your browser and navigate to http://localhost:8080/. You should see the following:
+Before running the application, update the following configuration values:
 
-![Render of sample application](../media/add-chat.png)
+1. In `bot-service.js`:
+   - `AZURE_OPENAI_ENDPOINT`: Your Azure OpenAI service endpoint
+   - `AZURE_OPENAI_KEY`: Your Azure OpenAI API key
+   - `DEPLOYMENT_NAME`: Your OpenAI model deployment name
 
-In the developer tools console within your browser you should see following:
+2. In `client.js`:
+   - `endpointUrl`: Your Azure Communication Services endpoint
+   - `userAccessToken`: Your Azure Communication Services access token
 
-Azure Communication Chat client created!
+## Setup and Run
+
+1. Clone the repository:
+   ```
+   git clone <repository-url>
+   cd Simple-bot-handoff-sample
+   ```
+
+2. Install dependencies:
+   ```
+   npm install
+   ```
+
+3. Start the development server:
+   ```
+   npm start
+   ```
+
+4. Open your browser and navigate to the URL displayed in your terminal (typically http://localhost:1234)
+
+## Usage
+
+### Customer View
+- Type messages in the bottom input field and press Send
+- Initially, the AI Assistant will respond to inquiries
+- System messages will indicate when an agent takes over
+
+### Agent View
+- Monitor incoming customer conversations in the Messages panel
+- Click "Take Over" in the banner when you want to handle the conversation personally
+- Use the "Summarize" button to generate an AI-powered summary of the conversation
+- After taking over, type in the input box to respond directly to the customer
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 
 
