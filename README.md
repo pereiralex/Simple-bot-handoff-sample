@@ -43,16 +43,53 @@ The application consists of:
 
 ## Configuration
 
-Before running the application, update the following configuration values:
+**❗ IMPORTANT: You must set up your environment variables correctly before the app will run.**
 
-1. In `bot-service.js`:
-   - `AZURE_OPENAI_ENDPOINT`: Your Azure OpenAI service endpoint
-   - `AZURE_OPENAI_KEY`: Your Azure OpenAI API key
-   - `DEPLOYMENT_NAME`: Your OpenAI model deployment name
+1. Copy `.env.example` to `.env`:
+   ```
+   cp .env.example .env
+   ```
 
-2. In `client.js`:
-   - `endpointUrl`: Your Azure Communication Services endpoint
-   - `userAccessToken`: Your Azure Communication Services access token
+2. Fill in your actual values in the `.env` file:
+   ```
+   # Azure Communication Services Configuration
+   ACS_ENDPOINT_URL=your_acs_endpoint_url
+   ACS_USER_ACCESS_TOKEN=your_acs_user_access_token
+
+   # Azure OpenAI Configuration
+   AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint
+   AZURE_OPENAI_KEY=your_azure_openai_key
+   AZURE_OPENAI_DEPLOYMENT_NAME=your_azure_openai_deployment_name
+   AZURE_OPENAI_API_VERSION=your_api_version
+   ```
+
+3. **Required Values**:
+   - The `ACS_USER_ACCESS_TOKEN` must be a complete, valid JWT token that typically starts with "eyJ" and contains multiple sections separated by periods.
+   - Do not add quotes around any of the values in your `.env` file.
+   - If you see a "JSON syntax error" or "Unterminated string" error when running the app, this typically means your access token is incomplete or malformed.
+
+4. **Important Security Notes**:
+   - Never commit your `.env` file to version control
+   - The `.env` file is included in `.gitignore` to prevent accidental commits
+   - For production deployments, use a secure way to manage secrets such as Azure Key Vault
+
+5. **Obtaining Credentials**:
+   - **Azure Communication Services**: 
+     - Get your endpoint URL from your ACS resource in the Azure portal
+     - Generate user access tokens using the Azure Communication Services Identity SDK or through the Azure portal
+     - Tokens must be complete and valid (must include all parts of the JWT)
+   - **Azure OpenAI**: 
+     - Get your endpoint URL and API key from your Azure OpenAI resource in the Azure portal
+
+The application will use these environment variables to connect to Azure services. The config.js module loads these values and provides them to the application.
+
+## Troubleshooting
+
+If you encounter a "JSON syntax error" when running the application, check your `.env` file:
+
+1. Make sure your `ACS_USER_ACCESS_TOKEN` is a complete, valid JWT token
+2. Ensure you haven't added quotes around any of the values
+3. Check if all required environment variables are set
 
 ## Setup and Run
 
@@ -67,12 +104,14 @@ Before running the application, update the following configuration values:
    npm install
    ```
 
-3. Start the development server:
+3. Set up your `.env` file as described in the Configuration section above
+
+4. Start the development server:
    ```
    npm start
    ```
 
-4. Open your browser and navigate to the URL displayed in your terminal (typically http://localhost:1234)
+5. Open your browser and navigate to the URL displayed in your terminal (typically http://localhost:1234)
 
 ## Usage
 
