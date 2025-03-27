@@ -1,10 +1,30 @@
 // <Create a chat client>
+import 'dotenv/config';
 import { ChatClient } from '@azure/communication-chat';
 import { AzureCommunicationTokenCredential } from '@azure/communication-common';
 import BotService, { SummaryService } from './bot-service.js';
 
-let endpointUrl = 'https://alexper-test1.unitedstates.communication.azure.com/';
-let userAccessToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IkY1M0ZEODA0RThBNDhBQzg4Qjg3NTA3M0M4MzRCRDdGNzBCMzBENDUiLCJ4NXQiOiI5VF9ZQk9pa2lzaUxoMUJ6eURTOWYzQ3pEVVUiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmMyZjJiZjU0LTFiMzctNDY3Zi1hZGUzLTE1YzY0MjhkMDMxMF8wMDAwMDAyNi03MzJjLWE2NjktOWMzMi04ZTNhMGQwMDgwMDAiLCJzY3AiOjE3OTIsImNzaSI6IjE3NDMwMDY2NjMiLCJleHAiOjE3NDMwOTMwNjMsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6ImNoYXQiLCJyZXNvdXJjZUlkIjoiYzJmMmJmNTQtMWIzNy00NjdmLWFkZTMtMTVjNjQyOGQwMzEwIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTc0MzAwNjY2M30.BBApY3ipN0JqtYnzlnnxufiTP12RoHTdXDK7_4Hi63bWGqdct1ePIP0DexMZ6v_sfTHYxls1TMjuXO4zkRO2k8uAqMVhffbrUlFUIKq5o18X0glvlC7cf26qbKTq36y3pTHUPPce7_dMp6nOvzbhZTdwS6oDyhxXNgyfXFAer3NQrOXmg98PF824okMpEHkZTgtKbokeMasWBXgEx_li8vEskMgi1O9LGiFc9LCS3esXcOlj-yjcN3M874xJPE647FV-OOFN8c_LPx4mCyHJJ1vOagzDwAgyMItn2DsViTzkxMYLTFyv_frY8pAU8UsWapjtRf8m-AdO8Zux3T1aNg';
+// Load values from environment variables with no default fallbacks for security
+let endpointUrl = process.env.ACS_ENDPOINT_URL;
+let userAccessToken = process.env.ACS_USER_ACCESS_TOKEN;
+
+// Check if required environment variables are set
+if (!endpointUrl || !userAccessToken) {
+  console.error('❌ ERROR: Required environment variables are missing!');
+  console.error('Please ensure ACS_ENDPOINT_URL and ACS_USER_ACCESS_TOKEN are set in your .env file');
+  // Add obvious UI error
+  document.body.innerHTML = `
+    <div style="color: red; padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; text-align: center; border: 2px solid red; border-radius: 8px;">
+      <h2>⚠️ Configuration Error</h2>
+      <p>Missing required environment variables. Please check your .env file and ensure the following are set correctly:</p>
+      <ul style="list-style: none; text-align: left; display: inline-block;">
+        <li>✓ ${endpointUrl ? '✅ ACS_ENDPOINT_URL is set' : '❌ ACS_ENDPOINT_URL is missing'}</li>
+        <li>✓ ${userAccessToken ? '✅ ACS_USER_ACCESS_TOKEN is set' : '❌ ACS_USER_ACCESS_TOKEN is missing'}</li>
+      </ul>
+      <p>Refer to the README.md for setup instructions.</p>
+    </div>
+  `;
+}
 
 // DOM Element check
 console.log('🔍 Checking DOM elements...');
@@ -39,18 +59,45 @@ let chatThreadClient;
 let chatThreadId;
 let notificationsStarted = false;
 
-// Get our user ID from the access token
-const tokenPayload = JSON.parse(atob(userAccessToken.split('.')[1]));
-const ourUserId = tokenPayload.skypeid.replace('acs:', '');
-console.log('🆔 Our user ID:', ourUserId);
+// Get our user ID from the access token - only if token is present
+let ourUserId;
+if (userAccessToken) {
+  try {
+    // Clean up token - remove any quotes, spaces or other characters that might cause issues
+    const cleanToken = userAccessToken.trim().replace(/^['"]|['"]$/g, '');
+    const tokenPayload = JSON.parse(atob(cleanToken.split('.')[1]));
+    ourUserId = tokenPayload.skypeid.replace('acs:', '');
+    console.log('🆔 Our user ID:', ourUserId);
+  } catch (error) {
+    console.error('❌ Error parsing user access token:', error);
+    ourUserId = null;
+  }
+} else {
+  console.error('❌ Cannot get user ID - access token is missing');
+}
 
-// Initialize the chat client globally
-try {
+// Initialize the chat client globally - only if required values are present
+if (endpointUrl && userAccessToken) {
+  try {
     console.log('🚀 Initializing Azure Communication Chat client...');
-    chatClient = new ChatClient(endpointUrl, new AzureCommunicationTokenCredential(userAccessToken));
+    // Clean up token again to ensure consistency
+    const cleanToken = userAccessToken.trim().replace(/^['"]|['"]$/g, '');
+    chatClient = new ChatClient(endpointUrl, new AzureCommunicationTokenCredential(cleanToken));
     console.log('✅ Chat client created successfully:', chatClient);
-} catch (error) {
+  } catch (error) {
     console.error('❌ Error creating chat client:', error);
+    // Show a helpful error in the UI
+    document.body.innerHTML = `
+      <div style="color: red; padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; text-align: center; border: 2px solid red; border-radius: 8px;">
+        <h2>⚠️ Chat Client Error</h2>
+        <p>Failed to initialize Azure Communication Services chat client.</p>
+        <p>Error: ${error.message}</p>
+        <p>Please check your credentials and try again.</p>
+      </div>
+    `;
+  }
+} else {
+  console.error('❌ Cannot initialize chat client - missing required configuration');
 }
 
 // Track message IDs we've already displayed to prevent duplicates
@@ -700,7 +747,12 @@ async function initializeChat() {
     try {
         // Make sure the chat client is available
         if (!chatClient) {
-            throw new Error('Chat client is not initialized. Cannot proceed with initialization.');
+            throw new Error('Chat client is not initialized. Cannot proceed with initialization. Please check your environment variables.');
+        }
+        
+        // Make sure we have required credentials
+        if (!endpointUrl || !userAccessToken) {
+            throw new Error('Missing required credentials. Please set ACS_ENDPOINT_URL and ACS_USER_ACCESS_TOKEN in your .env file.');
         }
         
         // Start real-time notifications FIRST - before creating chat thread

@@ -1,1 +1,14 @@
-node_modules
+# Dependencies
+node_modules/
+.parcel-cache/
+
+# Build
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store

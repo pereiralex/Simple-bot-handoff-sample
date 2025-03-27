@@ -1,8 +1,17 @@
 // Azure OpenAI Configuration
-const AZURE_OPENAI_ENDPOINT = 'https://alexper-test.openai.azure.com';
-const AZURE_OPENAI_KEY = '6f33abc23fe145e1942699fb513479b9';
-const DEPLOYMENT_NAME = 'gpt-35-turbo';
-const API_VERSION = '2024-02-15-preview';
+import 'dotenv/config';
+
+// Load values from environment variables with no default fallbacks for security
+const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
+const AZURE_OPENAI_KEY = process.env.AZURE_OPENAI_KEY;
+const DEPLOYMENT_NAME = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'gpt-35-turbo';
+const API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview';
+
+// Check if required environment variables are set
+if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_KEY) {
+  console.error('❌ ERROR: Required Azure OpenAI environment variables are missing!');
+  console.error('Please ensure AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_KEY are set in your .env file');
+}
 
 class BotService {
     constructor() {
@@ -23,7 +32,7 @@ class BotService {
     // Deactivate bot (when agent takes over)
     deactivate() {
         this.isActive = false;
-        return "A customer service agent will be taking over the conversation. Thank you for your patience.";
+        return "A human agent will be taking over the conversation. Thank you for your patience.";
     }
 
     // Check if bot is active
@@ -84,7 +93,7 @@ class BotService {
 
         } catch (error) {
             console.error('Error processing message with Azure OpenAI:', error);
-            return "I apologize, but I'm having trouble processing your request. Please try again or speak with a human agent.";
+            return "I apologize, but I'm having trouble processing your request.";
         }
     }
 }
@@ -100,7 +109,7 @@ export class SummaryService {
             
             const systemPrompt = {
                 role: "system",
-                content: "You are a professional conversation summarizer for a customer service chat. Create a clear, complete, and concise summary of the conversation between a customer and customer service. Focus on:\n1. Customer's main inquiry or issue\n2. Key details provided by the customer\n3. Responses provided by customer service\n4. Current status and any unresolved questions\n\nKeep the summary brief but comprehensive, capturing the full conversation thread."
+                content: "You are a professional conversation summarizer for a customer service chat system. Your job is to help somebody quickly understand the most salient details of the entire conversation up into this point so they can pick up where the bot agent left off. Focus more on the customer's issue at hand rather than the agent's responses so far. Keep the summary concise and to the point. The summary should be no more than 2-3 sentences. Ex: 'Customer is concerned about the cost of the flight and the agent is explaining the different fare types. The customer is trying to change the flight date but the agent is explaining that the flight is non-refundable.'"
             };
 
             // Direct extraction of messages for debugging
