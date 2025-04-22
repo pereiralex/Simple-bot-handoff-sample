@@ -1,14 +1,27 @@
 # Dependencies
 node_modules/
-.parcel-cache/
 
-# Build
+# Parcel build and cache
+.parcel-cache/
 dist/
+.cache/
 
 # Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
-# OS files
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
