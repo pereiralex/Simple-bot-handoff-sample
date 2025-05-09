@@ -14,6 +14,7 @@ products:
 
 This application demonstrates a complete customer service chat experience with an AI-powered assistant that can automatically handle customer inquiries and seamlessly hand off to a human agent when needed.
 
+
 ## Features
 
 - **Dual Interface**: Customer-facing chat widget and agent portal in a single demo
@@ -35,11 +36,12 @@ The application consists of:
 
 ## Prerequisites
 
-- An Azure account with an active subscription
+- An Azure account with an active subscription. [Create an account for free](https://azure.microsoft.com/free/).
 - [Node.js](https://nodejs.org/) (LTS version recommended)
-- An active Azure Communication Services resource
-- Azure OpenAI service with a configured deployment
-- User Access Tokens for Azure Communication Services
+- An active Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource).
+- User Access Tokens for Azure Communication Services. See more info [here](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/identity/access-tokens).
+- Azure OpenAI Resource and Deployed Model. See [instructions](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal).
+
 
 ## Configuration
 
@@ -83,13 +85,17 @@ The application consists of:
 
 The application will use these environment variables to connect to Azure services. The config.js module loads these values and provides them to the application.
 
-## Troubleshooting
+## Pricing
 
-If you encounter a "JSON syntax error" when running the application, check your `.env` file:
+This demo uses real Azure services, so minimal usage-based costs may apply. We've designed it to be lightweight, but extended use will incur charges. The following services may involve charges:
 
-1. Make sure your `ACS_USER_ACCESS_TOKEN` is a complete, valid JWT token
-2. Ensure you haven't added quotes around any of the values
-3. Check if all required environment variables are set
+1. **Azure Communication Services**
+   - Billed by usage: number of messages sent/received. See the [Azure Communication Services Pricing](https://azure.microsoft.com/pricing/details/communication-services/) page for details.
+
+2. **Azure OpenAI**
+   - Costs depend on the model used (e.g., GPT-4) and token volume. See the [Azure OpenAI Pricing](https://azure.microsoft.com/pricing/details/openai/) page for details.
+
+**Note**: Be sure to monitor your Azure usage to avoid unexpected charges. You can set up [Azure Cost Management](https://learn.microsoft.com/en-us/azure/cost-management-billing/) to track and control your spending.
 
 ## Setup and Run
 
@@ -125,6 +131,24 @@ If you encounter a "JSON syntax error" when running the application, check your 
 - Click "Take Over" in the banner when you want to handle the conversation personally
 - Use the "Summarize" button to generate an AI-powered summary of the conversation
 - After taking over, type in the input box to respond directly to the customer
+
+## Troubleshooting
+
+If you encounter a **"JSON syntax error"** when running the application, check your `.env` file:
+
+1. Make sure your `ACS_USER_ACCESS_TOKEN` is a complete, valid JWT token.
+2. Ensure you haven't added quotes around any of the values.
+3. Check if all required environment variables are set.
+
+If you see **"Error: Chat Initialization failed"** in the app and a **401 (Unauthorized)** error in the browser console, your `ACS_USER_ACCESS_TOKEN` may have expired.  
+Tokens generated in the Azure portal are typically valid for **24 hours**. To resolve this:
+
+1. Generate a new access token from your Azure Communication Services resource.
+2. Update the `ACS_USER_ACCESS_TOKEN` value in your `.env` file.
+3. Restart the application:
+   ```bash
+   npm start
+   ```
 
 ## License
 
