@@ -1,661 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Customer Service Chat Sample</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: #f8f9fa;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        /* Header styling */
-        .header-bar {
-            width: 100%;
-            display: flex;
-            background: white;
-            padding: 12px 20px;
-            border-bottom: 1px solid #e1e1e1;
-            align-items: center;
-            justify-content: flex-start;
-        }
-        
-        .header-tab {
-            margin-right: 20px;
-            font-weight: 600;
-            color: #333;
-            text-decoration: none;
-        }
-        
-        .header-tab.title {
-            color: #333;
-        }
-        
-        .header-tab.link {
-            color: #0066cc;
-            margin-left: 15px;
-            font-weight: 500;
-        }
-        
-        /* Main content layout with vertical separator */
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-        }
-        
-        /* Add a vertical dashed line separator */
-        .main-container::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 33%; /* Adjust to match the customer section width */
-            height: 100%;
-            border-left: 1px dashed #ddd;
-            z-index: 10;
-        }
-        
-        /* Customer section styling */
-        .customer-section {
-            width: 33%;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .support-chat-container {
-            width: 350px;
-            height: 500px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: white;
-        }
-        
-        .support-chat-header {
-            padding: 15px;
-            background: #f8f8f8;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: flex-start;
-        }
-        
-        .support-chat-header .left-section {
-            display: flex;
-            flex-direction: column;
-            margin-left: 10px;
-        }
-        
-        .support-chat-header .avatar {
-            width: 30px;
-            height: 30px;
-            background: #e1e1e1;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 14px;
-            color: #555;
-        }
-        
-        .online-indicator {
-            display: flex;
-            align-items: center;
-            font-size: 12px;
-            color: #2e8b57;
-            margin-top: 2px;
-        }
-        
-        .online-indicator .dot {
-            width: 8px;
-            height: 8px;
-            background-color: #2ecc71;
-            border-radius: 50%;
-            margin-right: 4px;
-        }
-        
-        .support-chat-messages {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .timestamp {
-            font-size: 11px;
-            color: rgba(0, 0, 0, 0.5);
-            margin-top: 2px;
-        }
-        
-        .support-chat-input {
-            padding: 15px;
-            border-top: 1px solid #eee;
-            display: flex;
-        }
-        
-        .support-chat-input input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            outline: none;
-            font-size: 14px;
-        }
-        
-        .support-chat-input button {
-            margin-left: 10px;
-            padding: 8px 15px;
-            background: #0084ff;
-            color: white;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-        
-        /* Agent section styling */
-        .agent-section {
-            width: 67%;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
-        
-        /* Create a container for the entire agent portal with border radius and shadow */
-        .agent-portal-container {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            overflow: hidden;
-        }
-        
-        .agent-header {
-            padding: 15px 20px;
-            background: white;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .agent-header h2 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .agent-profile {
-            display: flex;
-            align-items: center;
-        }
-        
-        .agent-profile .avatar {
-            width: 32px;
-            height: 32px;
-            background: #e1e1e1;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 14px;
-            color: #555;
-            margin-left: 10px;
-        }
-        
-        .agent-content {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            background: white;
-        }
-        
-        .customer-list {
-            width: 280px;
-            background: white;
-            border-right: 1px solid #eee;
-            overflow-y: auto;
-        }
-        
-        .customer-list-header {
-            padding: 20px 24px;
-            height: 22px;
-            font-size: 16px;
-            font-weight: 400;
-            color: #999;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .customer-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-        
-        .customer-item.active {
-            background: #f0f7ff;
-            border-left: 3px solid #0084ff;
-        }
-        
-        .customer-name {
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-        
-        .customer-message {
-            font-size: 13px;
-            color: #666;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .message-time {
-            float: right;
-            font-size: 12px;
-            color: #999;
-        }
-        
-        .agent-chat {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: white;
-        }
-        
-        .agent-chat-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .agent-chat-header .left-section {
-            display: flex;
-            align-items: center;
-        }
-        
-        .agent-chat-header .avatar {
-            width: 30px;
-            height: 30px;
-            background: #e1e1e1;
-            border-radius: 50%;
-            margin-right: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 14px;
-        }
-        
-        .takeover-button {
-            padding: 8px 12px;
-            background-color: #0084ff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-        
-        .takeover-button:hover {
-            background-color: #0066cc;
-        }
-        
-        .takeover-button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        
-        .agent-chat-messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .agent-chat-input {
-            padding: 15px 20px;
-            background: white;
-            border-top: 1px solid #eee;
-            display: flex;
-        }
-        
-        .agent-chat-input input {
-            flex: 1;
-            padding: 12px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            outline: none;
-            font-size: 14px;
-            max-height: 240px;
-        }
-        
-        .agent-chat-input button {
-            margin-left: 8px;
-            padding: 4px 12px;
-            color: black;
-            background-color: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        /* Message bubbles styling */
-        .message {
-            max-width: 80%;
-            padding: 10px 15px;
-            border-radius: 18px;
-            position: relative;
-            word-wrap: break-word;
-        }
-        
-        .message.sent {
-            align-self: flex-end;
-            background: #0084ff;
-            color: white;
-            border-bottom-right-radius: 4px;
-        }
-        
-        .message.received {
-            align-self: flex-start;
-            background: #eee;
-            color: black;
-            border-bottom-left-radius: 4px;
-        }
-        
-        /* System message in customer view */
-        .message.system {
-            align-self: center;
-            background: transparent;
-            color: #6c757d;
-            font-size: 13px;
-            max-width: 100%;
-            text-align: center;
-            padding: 5px 15px;
-            border: none;
-            border-radius: 0;
-        }
-        
-        .agent-message {
-            padding: 10px 15px;
-            border-radius: 4px;
-            max-width: calc(100% - 160px);
-            word-wrap: break-word;
-        }
-        
-        .agent-message.customer {
-            align-self: flex-start;
-            background: white;
-            border: 1px solid #e1e1e1;
-        }
-        
-        .agent-message.agent {
-            align-self: flex-end;
-            background: #e6f7ff;
-            border: 1px solid #c7e8ff;
-        }
-        
-        .agent-message.bot {
-            align-self: flex-end;
-            background: #f8f8f8;
-            border: 1px solid #dedede;
-        }
-        
-        .agent-message .sender {
-            font-size: 12px;
-            font-weight: 500;
-            margin-bottom: 5px;
-            color: #666;
-        }
-        
-        .message.bot {
-            align-self: flex-end;
-            background: #e9e9e9;
-            color: #333;
-            border-bottom-right-radius: 4px;
-        }
-        
-        /* System message styling */
-        .agent-message.system {
-            align-self: center;
-            background: transparent;
-            border: none;
-            color: #6c757d;
-            font-size: 13px;
-            max-width: 100%;
-            text-align: center;
-            padding: 5px 15px;
-        }
-        
-        /* System message wrapper styling */
-        .message-wrapper.system {
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            margin-bottom: 8px;
-        }
-        
-        /* AI Handling Banner */
-        .ai-handling-banner {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #e8f4fd;
-            color: #0078d4;
-            padding: 12px 16px;
-            font-size: 14px;
-            margin: 0;
-            width: 100%;
-            box-sizing: border-box;
-            border-top: 1px solid #e1e1e1;
-        }
-        
-        .ai-handling-banner .ai-icon {
-            margin-right: 8px;
-            font-size: 16px;
-        }
-        
-        .ai-handling-banner .take-over-link {
-            margin-left: 15px;
-            background-color: #007bff;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            border: none;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .ai-handling-banner .take-over-link:hover {
-            background-color: #0056b3;
-        }
-        
-        .summary-card {
-            max-width: 60%;
-            background: white;
-            border: 1px solid #e1e1e1;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .action-button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .action-button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        
-        #takeoverButton {
-            background-color: #007bff;
-            color: white;
-        }
-        
-        #takeoverButton:hover:not(:disabled) {
-            background-color: #0056b3;
-        }
-        
-        #summarizeButton {
-            background-color: #007bff;
-            color: white;
-        }
-        
-        #summarizeButton:hover:not(:disabled) {
-            background-color: #0056b3;
-        }
-        
-        /* Message with avatar wrapper styling */
-        .agent-chat-messages > div {
-            align-self: stretch;
-            margin-bottom: 10px;
-            width: 100%;
-        }
-        
-        /* Avatar styling for messages */
-        .message-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-        
-        .message-avatar.bot {
-            background: #f8f8f8;
-            color: #555;
-        }
-        
-        .message-avatar.agent {
-            background: #e6f7ff;
-            color: #0084ff;
-        }
-        
-        .message-avatar.customer {
-            background: #f0f0f0;
-            color: #333;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Bot Handoff Sample</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="header-bar">
-        <div class="header-tab title">Bot-to-human handoff Demo</div>
-        <a href="https://github.com/pereiralex/Simple-bot-handoff-sample" class="header-tab link">GitHub</a>
+        <a href="#" class="header-tab title">Simple Bot Handoff Sample</a>
+        <a href="https://github.com/Azure-Samples/communication-services-javascript-quickstarts/tree/main/bot-handoff" class="header-tab link">View on GitHub</a>
     </div>
-    
     <div class="main-container">
-        <!-- Customer view -->
         <div class="customer-section">
             <div class="support-chat-container">
                 <div class="support-chat-header">
                     <div class="avatar">✈️</div>
                     <div class="left-section">
-                        Airline customer support
+                        <div>Contoso Airlines</div>
                         <div class="online-indicator">
                             <div class="dot"></div>
-                            Online
+                            <span>Online</span>
                         </div>
                     </div>
                 </div>
-                <div id="customerMessages" class="support-chat-messages">
-                    <!-- Messages will be added here by JavaScript -->
-                </div>
+                <div class="support-chat-messages" id="customerMessages"></div>
                 <div class="support-chat-input">
-                    <input type="text" id="customerInput" placeholder="Type your message...">
+                    <input type="text" id="customerInput" placeholder="Type a message...">
                     <button id="customerSendButton">Send</button>
                 </div>
             </div>
         </div>
-        
-        <!-- Agent view -->
         <div class="agent-section">
             <div class="agent-portal-container">
                 <div class="agent-header">
-                    <h2>✈️  Customer service portal</h2>
+                    <h2>Contoso Airlines Agent Portal</h2>
                     <div class="agent-profile">
+                        <span>Agent</span>
                         <div class="avatar">A</div>
                     </div>
                 </div>
-                
                 <div class="agent-content">
                     <div class="customer-list">
-                        <div class="customer-list-header">Support cases</div>
-
-                        <!-- Active customer -->
-                        <div class="customer-item active">
-                            <div class="customer-name">
-                                Sarah Jones
-                                <span class="message-time">6:21 PM</span>
-                            </div>
-                            <div class="customer-message">Hello, what is the fee to bring a golf bag...</div>
-                        </div>
-                        
-                        <!-- Other customers -->
-                        <div class="customer-item">
-                            <div class="customer-name">
-                                John Smith
-                                <span class="message-time">7:21 AM</span>
-                            </div>
-                            <div class="customer-message">What time does flight AX345 arrive?</div>
-                        </div>
-                        
-                        <div class="customer-item">
-                            <div class="customer-name">
-                                Catherine Frank
-                                <span class="message-time">7:21 AM</span>
-                            </div>
-                            <div class="customer-message">I'd like to rebook my flight tomorrow to...</div>
-                        </div>
+                        <div class="customer-list-header">Customers</div>
+                        <div id="customerList"></div>
                     </div>
-                    
                     <div class="agent-chat">
                         <div class="agent-chat-header">
                             <div class="left-section">
-                                <div class="avatar">SJ</div>
-                                <span>Sarah Jones</span>
+                                <div class="avatar">C</div>
+                                <div>
+                                    <div>Sarah Jones</div>
+                                    <div class="online-indicator">
+                                        <div class="dot"></div>
+                                        <span>Online</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="action-buttons">
-                                <button id="summarizeButton" class="action-button" onclick="handleSummarizeClick()">Summarize</button>
+                            <div>
+                                <button id="summarizeButton" class="action-button">Summarize</button>
+                                <button id="takeoverButton" class="action-button">Take Over</button>
                             </div>
                         </div>
-                        
-                        <div id="agentMessages" class="agent-chat-messages">
-                            <!-- Messages will be added here by JavaScript -->
-                        </div>
-                        
+                        <div class="agent-chat-messages" id="agentMessages"></div>
                         <div class="agent-chat-input">
-                            <input type="text" id="agentInput" placeholder="Enter a message">
+                            <input type="text" id="agentInput" placeholder="Type a message...">
                             <button id="agentSendButton">Send</button>
                         </div>
                     </div>
@@ -663,7 +72,6 @@
             </div>
         </div>
     </div>
-    
     <script type="module" src="./client.js"></script>
 </body>
 </html>

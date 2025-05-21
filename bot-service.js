@@ -68,8 +68,8 @@ class BotService {
                 },
                 body: JSON.stringify({
                     messages: messages,
-                    temperature: 0.7,
-                    max_tokens: 800
+                    temperature: 0.7, // LLM temperature for response randomness
+                    max_tokens: 800   // max tokens for LLM response length
                 })
             });
 
@@ -161,7 +161,7 @@ export class SummaryService {
             const requestBody = {
                 messages: [systemPrompt, ...sortedMessages],
                 temperature: 0.5,
-                max_tokens: 500
+                max_tokens: 500   
             };
 
             const response = await fetch(`${AZURE_OPENAI_ENDPOINT}/openai/deployments/${DEPLOYMENT_NAME}/chat/completions?api-version=${API_VERSION}`, {

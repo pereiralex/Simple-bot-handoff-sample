@@ -13,10 +13,10 @@ if (!endpointUrl || !userAccessToken) {
   console.error('Required environment variables are missing!');
   console.error('Please ensure ACS_ENDPOINT_URL and ACS_USER_ACCESS_TOKEN are set in your .env file');
   document.body.innerHTML = `
-    <div style="color: red; padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; text-align: center; border: 2px solid red; border-radius: 8px;">
+    <div class="error-message">
       <h2>Configuration Error</h2>
       <p>Missing required environment variables. Please check your .env file and ensure the following are set correctly:</p>
-      <ul style="list-style: none; text-align: left; display: inline-block;">
+      <ul>
         <li>${endpointUrl ? '✅ ACS_ENDPOINT_URL is set' : '❌ ACS_ENDPOINT_URL is missing'}</li>
         <li>${userAccessToken ? '✅ ACS_USER_ACCESS_TOKEN is set' : '❌ ACS_USER_ACCESS_TOKEN is missing'}</li>
       </ul>
@@ -47,6 +47,7 @@ let chatClient;
 let chatThreadClient;
 let chatThreadId;
 let notificationsStarted = false;
+let currentCustomer = null;
 
 // Extract user ID from access token
 let ourUserId;
@@ -71,7 +72,7 @@ if (endpointUrl && userAccessToken) {
   } catch (error) {
     console.error('Error creating chat client:', error);
     document.body.innerHTML = `
-      <div style="color: red; padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; text-align: center; border: 2px solid red; border-radius: 8px;">
+      <div class="error-message">
         <h2>Chat Client Error</h2>
         <p>Failed to initialize Azure Communication Services chat client.</p>
         <p>Error: ${error.message}</p>
@@ -92,6 +93,9 @@ let isAgentActive = false;
 const summaryService = new SummaryService();
 let lastMessageTime = null;
 
+// Store latest message for each thread
+const threadLatestMessage = {};
+
 // Show AI handling banner and disable input
 function showAIHandlingBanner() {
     removeAIHandlingBanner();
@@ -110,7 +114,7 @@ function showAIHandlingBanner() {
     const inputArea = document.querySelector('.agent-chat-input');
     
     if (agentChat && inputArea) {
-        inputArea.style.display = 'none';
+        inputArea.classList.add('input-area-hidden');
         agentChat.appendChild(bannerDiv);
         
         const bannerTakeOverBtn = document.getElementById('bannerTakeOverBtn');
@@ -145,7 +149,7 @@ function removeAIHandlingBanner() {
     
     const inputArea = document.querySelector('.agent-chat-input');
     if (inputArea) {
-        inputArea.style.display = 'flex';
+        inputArea.classList.add('input-area-visible');
     }
 }
 
@@ -154,7 +158,7 @@ function enableAgentInput() {
     const inputArea = document.querySelector('.agent-chat-input');
     if (inputArea) {
         inputArea.classList.remove('disabled');
-        inputArea.style.display = 'flex';
+        inputArea.classList.add('input-area-visible');
         
         const input = document.getElementById('agentInput');
         const sendButton = document.getElementById('agentSendButton');
@@ -177,13 +181,7 @@ function showErrorInUI(message) {
     try {
         if (customerMessagesContainer) {
             const errorDiv = document.createElement('div');
-            errorDiv.className = 'message error';
-            errorDiv.style.backgroundColor = '#ffdddd';
-            errorDiv.style.color = '#cc0000';
-            errorDiv.style.padding = '10px 15px';
-            errorDiv.style.margin = '10px 0';
-            errorDiv.style.borderRadius = '8px';
-            errorDiv.style.alignSelf = 'center';
+            errorDiv.className = 'message error-message';
             errorDiv.textContent = `Error: ${message}`;
             customerMessagesContainer.appendChild(errorDiv);
             customerMessagesContainer.scrollTop = customerMessagesContainer.scrollHeight;
@@ -191,13 +189,7 @@ function showErrorInUI(message) {
         
         if (agentMessagesContainer) {
             const errorDiv = document.createElement('div');
-            errorDiv.className = 'agent-message error';
-            errorDiv.style.backgroundColor = '#ffdddd';
-            errorDiv.style.color = '#cc0000';
-            errorDiv.style.padding = '10px 15px';
-            errorDiv.style.margin = '10px 0';
-            errorDiv.style.borderRadius = '8px';
-            errorDiv.style.alignSelf = 'center';
+            errorDiv.className = 'agent-message error-message';
             errorDiv.textContent = `Error: ${message}`;
             agentMessagesContainer.appendChild(errorDiv);
             agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
@@ -244,82 +236,66 @@ async function createChatThread() {
     }
 }
 
-// Add message to agent UI
-function addMessageToAgentUI(message, isAgent = false, sender = null, messageId = null) {
-    if (messageId && displayedMessageIds.has(`agent-${messageId}`)) {
-        return;
-    }
+// Add customer to list
+function addCustomerToList(customerId, displayName, lastMessage, timestamp) {
+    const customerList = document.getElementById('customerList');
+    if (!customerList) return;
+
+    const customerItem = document.createElement('div');
+    customerItem.className = 'customer-item';
+    customerItem.dataset.customerId = customerId;
     
-    if (messageId) {
-        displayedMessageIds.add(`agent-${messageId}`);
-    }
-    
-    try {
-        const isSystem = sender === 'System';
-        
-        if (isSystem) {
-            const messageWrapper = document.createElement('div');
-            messageWrapper.className = 'message-wrapper system';
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'agent-message system';
-            messageDiv.textContent = message;
-            
-            messageWrapper.appendChild(messageDiv);
-            agentMessagesContainer.appendChild(messageWrapper);
-        } else {
-            const messageWrapper = document.createElement('div');
-            messageWrapper.style.display = 'flex';
-            messageWrapper.style.alignItems = 'flex-start';
-            messageWrapper.style.gap = '10px';
-            messageWrapper.style.marginBottom = '15px';
-            
-            const isBot = sender === 'AI Assistant';
-            
-            const avatarDiv = document.createElement('div');
-            avatarDiv.className = isBot ? 'message-avatar bot' : 
-                                isAgent ? 'message-avatar agent' : 
-                                'message-avatar customer';
-            
-            if (isBot) {
-                avatarDiv.innerHTML = 'AI';
-            } else if (isAgent) {
-                avatarDiv.textContent = 'SA';
-            } else {
-                avatarDiv.textContent = 'SJ';
-            }
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'}`;
-            messageDiv.style.margin = '0';
-            
-            if (sender) {
-                const senderDiv = document.createElement('div');
-                senderDiv.className = 'sender';
-                senderDiv.textContent = sender;
-                messageDiv.appendChild(senderDiv);
-            }
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.textContent = message;
-            messageDiv.appendChild(contentDiv);
-            
-            if (isBot || isAgent) {
-                messageWrapper.style.flexDirection = 'row-reverse';
-                messageWrapper.appendChild(avatarDiv);
-                messageWrapper.appendChild(messageDiv);
-            } else {
-                messageWrapper.appendChild(avatarDiv);
-                messageWrapper.appendChild(messageDiv);
-            }
-            
-            agentMessagesContainer.appendChild(messageWrapper);
+    customerItem.innerHTML = `
+        <div class="customer-name">
+            ${displayName}
+            <span class="message-time">${timestamp}</span>
+        </div>
+        <div class="customer-message">${lastMessage}</div>
+    `;
+
+    customerItem.addEventListener('click', () => selectCustomer(customerId));
+    customerList.appendChild(customerItem);
+}
+
+// Select customer
+function selectCustomer(customerId) {
+    const customerItems = document.querySelectorAll('.customer-item');
+    customerItems.forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.customerId === customerId) {
+            item.classList.add('active');
+            currentCustomer = customerId;
         }
-        
-        agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
-    } catch (error) {
-        console.error('Error adding message to agent UI:', error);
+    });
+}
+
+// Update customer list
+function updateCustomerList() {
+    const customerList = document.getElementById('customerList');
+    if (!customerList) return;
+
+    // Clear existing list
+    customerList.innerHTML = '';
+
+    // Add current customer
+    if (chatThreadId) {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const lastMessage = threadLatestMessage[chatThreadId] || 'No messages yet.';
+        addCustomerToList(
+            chatThreadId,
+            'Sarah Jones',
+            lastMessage,
+            timeString
+        );
+        selectCustomer(chatThreadId);
     }
+}
+
+// Update latest message and refresh list
+function setLatestMessage(threadId, message) {
+    threadLatestMessage[threadId] = message;
+    updateCustomerList();
 }
 
 // Add message to customer UI
@@ -327,103 +303,129 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null, i
     if (messageId && displayedMessageIds.has(`customer-${messageId}`)) {
         return;
     }
-    
     if (messageId) {
         displayedMessageIds.add(`customer-${messageId}`);
     }
-    
     try {
         const isSystem = messageId && messageId.includes('system');
-        
         if (isSystem) {
             const messageDiv = document.createElement('div');
-            messageDiv.className = 'message system';
-            messageDiv.style.alignSelf = 'center';
-            messageDiv.style.background = 'transparent';
-            messageDiv.style.color = '#6c757d';
-            messageDiv.style.fontSize = '13px';
-            messageDiv.style.padding = '5px 15px';
-            messageDiv.style.textAlign = 'center';
-            messageDiv.style.maxWidth = '100%';
-            messageDiv.style.border = 'none';
+            messageDiv.className = 'message system-message';
             messageDiv.textContent = message;
-            
             customerMessagesContainer.appendChild(messageDiv);
         } else {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isCustomer ? 'sent' : 'received'}`;
             messageDiv.textContent = message;
-            
             const timestamp = document.createElement('div');
             timestamp.className = 'timestamp';
             timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             messageDiv.appendChild(timestamp);
-            
             customerMessagesContainer.appendChild(messageDiv);
         }
-        
         customerMessagesContainer.scrollTop = customerMessagesContainer.scrollHeight;
+        // Update preview
+        setLatestMessage(chatThreadId, message);
     } catch (error) {
         console.error('Error adding message to customer UI:', error);
+    }
+}
+
+// Add message to agent UI
+function addMessageToAgentUI(message, isAgent = false, sender = null, messageId = null) {
+    if (messageId && displayedMessageIds.has(`agent-${messageId}`)) {
+        return;
+    }
+    if (messageId) {
+        displayedMessageIds.add(`agent-${messageId}`);
+    }
+    try {
+        const isSystem = sender === 'System';
+        if (isSystem) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = 'message-wrapper system';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'agent-message system';
+            messageDiv.textContent = message;
+            messageWrapper.appendChild(messageDiv);
+            agentMessagesContainer.appendChild(messageWrapper);
+        } else {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = 'message-wrapper';
+            const isBot = sender === 'AI Assistant';
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = isBot ? 'message-avatar bot' : 
+                                isAgent ? 'message-avatar agent' : 
+                                'message-avatar customer';
+            if (isBot) {
+                avatarDiv.innerHTML = 'AI';
+            } else if (isAgent) {
+                avatarDiv.textContent = 'SA';
+            } else {
+                avatarDiv.textContent = 'SJ';
+            }
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'} message-content`;
+            if (sender) {
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'sender';
+                senderDiv.textContent = sender;
+                messageDiv.appendChild(senderDiv);
+            }
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = message;
+            messageDiv.appendChild(contentDiv);
+            if (isBot || isAgent) {
+                messageWrapper.classList.add('reversed');
+                messageWrapper.appendChild(avatarDiv);
+                messageWrapper.appendChild(messageDiv);
+            } else {
+                messageWrapper.appendChild(avatarDiv);
+                messageWrapper.appendChild(messageDiv);
+            }
+            agentMessagesContainer.appendChild(messageWrapper);
+        }
+        agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
+        // Update preview
+        setLatestMessage(chatThreadId, message);
+    } catch (error) {
+        console.error('Error adding message to agent UI:', error);
     }
 }
 
 // Add summary to agent UI
 function addSummaryToAgentUI(summary) {
     const summaryDiv = document.createElement('div');
-    summaryDiv.className = 'agent-message summary-card';
-    summaryDiv.style.width = '80%';
-    summaryDiv.style.maxWidth = '600px';
-    summaryDiv.style.alignSelf = 'center';
-    summaryDiv.style.background = 'white';
-    summaryDiv.style.border = '1px solid #ccd';
-    summaryDiv.style.borderRadius = '8px';
-    summaryDiv.style.padding = '15px';
-    summaryDiv.style.margin = '10px 0';
-    summaryDiv.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+    summaryDiv.className = 'summary-card';
 
     const headerDiv = document.createElement('div');
-    headerDiv.style.display = 'flex';
-    headerDiv.style.alignItems = 'center';
-    headerDiv.style.marginBottom = '10px';
-    headerDiv.style.paddingBottom = '10px';
-    headerDiv.style.borderBottom = '1px solid #e1e1e1';
+    headerDiv.className = 'summary-card-header';
 
     const iconSpan = document.createElement('span');
+    iconSpan.className = 'summary-card-header-icon';
     iconSpan.textContent = 'Summary';
-    iconSpan.style.marginRight = '8px';
-    iconSpan.style.fontSize = '16px';
 
     const headerText = document.createElement('span');
+    headerText.className = 'summary-card-header-text';
     headerText.textContent = 'Conversation Summary';
-    headerText.style.fontWeight = '600';
-    headerText.style.color = '#333';
-    headerText.style.fontSize = '16px';
 
     const timestamp = document.createElement('span');
+    timestamp.className = 'summary-card-timestamp';
     timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    timestamp.style.marginLeft = 'auto';
-    timestamp.style.color = '#888';
-    timestamp.style.fontSize = '12px';
-
-    headerDiv.appendChild(iconSpan);
-    headerDiv.appendChild(headerText);
-    headerDiv.appendChild(timestamp);
 
     const contentDiv = document.createElement('div');
+    contentDiv.className = 'summary-card-content';
     const paragraphs = summary.split('\n').filter(p => p.trim() !== '');
     
     paragraphs.forEach(paragraph => {
         const p = document.createElement('p');
         p.textContent = paragraph;
-        p.style.margin = '0 0 10px 0';
-        p.style.lineHeight = '1.5';
         contentDiv.appendChild(p);
     });
-    
-    contentDiv.style.color = '#444';
-    contentDiv.style.fontSize = '14px';
-    contentDiv.style.lineHeight = '1.5';
+
+    headerDiv.appendChild(iconSpan);
+    headerDiv.appendChild(headerText);
+    headerDiv.appendChild(timestamp);
 
     summaryDiv.appendChild(headerDiv);
     summaryDiv.appendChild(contentDiv);
@@ -639,6 +641,9 @@ async function initializeChat() {
         if (!chatThreadClient) {
             throw new Error('Failed to create chat thread client');
         }
+
+        // Initialize customer list
+        updateCustomerList();
         
         const greeting = await botService.startConversation();
         
