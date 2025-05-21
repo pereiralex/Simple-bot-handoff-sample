@@ -1,35 +1,35 @@
 // Azure OpenAI Configuration
 import 'dotenv/config';
 
-// Load values from environment variables with no default fallbacks for security
+// Load environment variables
 const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
 const AZURE_OPENAI_KEY = process.env.AZURE_OPENAI_KEY;
 const DEPLOYMENT_NAME = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'gpt-35-turbo';
 const API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview';
 
-// Check if required environment variables are set
+// Validate required environment variables
 if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_KEY) {
-  console.error('❌ ERROR: Required Azure OpenAI environment variables are missing!');
+  console.error('Required Azure OpenAI environment variables are missing!');
   console.error('Please ensure AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_KEY are set in your .env file');
 }
 
 class BotService {
     constructor() {
         this.conversationHistory = [];
-        this.isActive = true; // Bot starts active
+        this.isActive = true;
     }
 
     // Initialize conversation with greeting
     async startConversation() {
         const greeting = {
             role: "assistant",
-            content: "👋 Hello! I'm the Contoso Airlines automated customer service assistant. How can I assist you today?"
+            content: "Hello! I'm the Contoso Airlines automated customer service assistant. How can I assist you today?"
         };
         this.conversationHistory.push(greeting);
         return greeting.content;
     }
 
-    // Deactivate bot (when agent takes over)
+    // Deactivate bot when agent takes over
     deactivate() {
         this.isActive = false;
         return "A human agent will be taking over the conversation. Thank you for your patience.";
@@ -40,20 +40,18 @@ class BotService {
         return this.isActive;
     }
 
-    // Process a message through Azure OpenAI
+    // Process message through Azure OpenAI
     async processMessage(userMessage) {
         if (!this.isActive) {
             return null;
         }
 
         try {
-            // Add user message to history
             this.conversationHistory.push({
                 role: "user",
                 content: userMessage
             });
 
-            // Prepare the messages array with system prompt and conversation history
             const messages = [
                 {
                     role: "assistant",
@@ -62,7 +60,6 @@ class BotService {
                 ...this.conversationHistory
             ];
 
-            // Call Azure OpenAI API
             const response = await fetch(`${AZURE_OPENAI_ENDPOINT}/openai/deployments/${DEPLOYMENT_NAME}/chat/completions?api-version=${API_VERSION}`, {
                 method: 'POST',
                 headers: {
@@ -83,7 +80,6 @@ class BotService {
             const data = await response.json();
             const botResponse = data.choices[0].message.content;
 
-            // Add bot response to history
             this.conversationHistory.push({
                 role: "assistant",
                 content: botResponse
@@ -105,32 +101,18 @@ export class SummaryService {
 
     async generateSummary(messages) {
         try {
-            console.log('Starting summary generation with', messages.length, 'messages');
-            
             const systemPrompt = {
                 role: "system",
                 content: "You are a professional conversation summarizer for a customer service chat system. Your job is to relay the most salient details of the entire conversation up into this point so a customer service agent can pick up where the conversation left off without needing to read the entire conversation. Your summary should focus more on the customer's issue(s) at hand rather than the agent's responses. Keep the summary concise and to the point. The summary should be no more than 3-4 sentences. Ex1: 'Customer is trying to change the flight date but the agent is explaining that the flight is non-refundable. The agent has explained the options for getting a partial credit.' Ex2:'Customer is inquiring about adding a pet to their booking and the associated fees.' Ex3:'Customer wishes to file a complaint regarding an incorrect meal provided during a recent flight. Customer has requested compensation in return.' Ex4: 'Customer requested clarification on bag size limits. They also inquired about the pet policy and associated fees.'"
             };
 
-            // Direct extraction of messages for debugging
-            console.log('RAW MESSAGE DUMP (first 3 messages):');
-            for (let i = 0; i < Math.min(3, messages.length); i++) {
-                console.log(`Message ${i+1} FULL:`, JSON.stringify(messages[i]));
-            }
-
-            // Filter out system messages and prepare conversation history
             const conversationMessages = [];
-            
-            console.log('Converting Azure Chat API messages to OpenAI format...');
             
             for (let i = 0; i < messages.length; i++) {
                 const msg = messages[i];
-                
-                // Advanced content extraction
                 let messageContent = null;
                 const senderName = msg.senderDisplayName || 'Unknown';
                 
-                // Try multiple ways to extract content
                 if (msg.content && typeof msg.content === 'string') {
                     messageContent = msg.content;
                 } else if (msg.content && typeof msg.content === 'object') {
@@ -138,7 +120,6 @@ export class SummaryService {
                 } else if (msg.message) {
                     messageContent = msg.message;
                 } else {
-                    // Look for content in other properties
                     const msgStr = JSON.stringify(msg);
                     const contentMatch = msgStr.match(/"content":"([^"]+)"/);
                     if (contentMatch && contentMatch[1]) {
@@ -146,19 +127,14 @@ export class SummaryService {
                     }
                 }
                 
-                // Make sure we have content
                 if (!messageContent || messageContent.trim() === '') {
-                    console.log(`Skipping message ${i+1} from ${senderName}: no content found`);
                     continue;
                 }
                 
-                // Skip system messages
                 if (senderName === 'System') {
-                    console.log(`Skipping system message ${i+1}: ${messageContent.substring(0, 30)}...`);
                     continue;
                 }
                 
-                // Determine role based on sender
                 let role = 'assistant';
                 if (senderName === 'Sarah Jones') {
                     role = 'user';
@@ -174,31 +150,19 @@ export class SummaryService {
                 };
                 
                 conversationMessages.push(formattedMessage);
-                console.log(`Added message ${i+1} from ${senderName} (${role}): ${messageContent.substring(0, 50)}...`);
             }
             
             if (conversationMessages.length === 0) {
-                console.log('No valid messages to summarize');
                 return "No messages to summarize yet.";
             }
             
-            console.log(`Prepared ${conversationMessages.length} messages for summary`);
-            
-            // Create the "story" of the conversation in chronological order
             const sortedMessages = [...conversationMessages];
-            console.log('Conversation flow:');
-            sortedMessages.forEach((msg, i) => {
-                console.log(`${i+1}. ${msg.role}: ${msg.content.substring(0, 30)}...`);
-            });
 
-            // Make API call with the full conversation
             const requestBody = {
                 messages: [systemPrompt, ...sortedMessages],
                 temperature: 0.5,
                 max_tokens: 500
             };
-            
-            console.log('Request payload size:', JSON.stringify(requestBody).length, 'characters');
 
             const response = await fetch(`${AZURE_OPENAI_ENDPOINT}/openai/deployments/${DEPLOYMENT_NAME}/chat/completions?api-version=${API_VERSION}`, {
                 method: 'POST',
@@ -211,13 +175,10 @@ export class SummaryService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('API response error:', response.status, errorText);
                 throw new Error(`API call failed: ${response.statusText}. Details: ${errorText}`);
             }
 
             const data = await response.json();
-            console.log('API response received successfully');
-            
             this.lastSummaryTime = new Date();
             return data.choices[0].message.content;
 
@@ -228,7 +189,6 @@ export class SummaryService {
     }
 
     shouldAllowNewSummary(messages, lastMessageTime) {
-        // Always allow a summary
         return true;
     }
 }

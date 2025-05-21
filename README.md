@@ -63,33 +63,25 @@ The application consists of:
    AZURE_OPENAI_API_VERSION=your_api_version
    ```
 
-3. **Required Values**:
-   - The `ACS_USER_ACCESS_TOKEN` must be a complete, valid JWT token that typically starts with "eyJ" and contains multiple sections separated by periods.
-   - Do not add quotes around any of the values in your `.env` file.
-   - If you see a "JSON syntax error" or "Unterminated string" error when running the app, this typically means your access token is incomplete or malformed.
+4. **Obtaining Credentials**:
+   - **Azure Communication Services**: 
+     - Get your endpoint URL from your ACS resource in the Azure portal
+     - Generate user access tokens using the Azure Communication Services Identity SDK or through the Azure portal
+   - **Azure OpenAI**: 
+     - Create and deploy an Azure OpenAI in Azure AI Foundry Models resource [Tutorial](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal)
+     - AZURE_OPENAI_ENDPOINT: This value can be found in the Keys and Endpoint section when examining your resource from the Azure portal.
+     - AZURE_OPENAI_DEPLOYMENT_NAME: This value will correspond to the custom name you chose for your deployment when you deployed a model. This value can be found under Resource Management > Model Deployments in the Azure portal.
+     OPENAI_API_VERSION: Learn more about [API Versions](https://learn.microsoft.com/en-us/azure/ai-services/openai/api-version-deprecation).
 
-4. **Important Security Notes**:
+5. **Important Security Notes**:
    - Never commit your `.env` file to version control
    - The `.env` file is included in `.gitignore` to prevent accidental commits
    - For production deployments, use a secure way to manage secrets such as Azure Key Vault
 
-5. **Obtaining Credentials**:
-   - **Azure Communication Services**: 
-     - Get your endpoint URL from your ACS resource in the Azure portal
-     - Generate user access tokens using the Azure Communication Services Identity SDK or through the Azure portal
-     - Tokens must be complete and valid (must include all parts of the JWT)
-   - **Azure OpenAI**: 
-     - Get your endpoint URL and API key from your Azure OpenAI resource in the Azure portal
 
 The application will use these environment variables to connect to Azure services. The config.js module loads these values and provides them to the application.
 
-## Troubleshooting
 
-If you encounter a "JSON syntax error" when running the application, check your `.env` file:
-
-1. Make sure your `ACS_USER_ACCESS_TOKEN` is a complete, valid JWT token
-2. Ensure you haven't added quotes around any of the values
-3. Check if all required environment variables are set
 
 ## Setup and Run
 

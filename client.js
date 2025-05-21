@@ -1,33 +1,31 @@
-// <Create a chat client>
+// Azure Communication Services client setup
 import 'dotenv/config';
 import { ChatClient } from '@azure/communication-chat';
 import { AzureCommunicationTokenCredential } from '@azure/communication-common';
 import BotService, { SummaryService } from './bot-service.js';
 
-// Load values from environment variables with no default fallbacks for security
+// Load environment variables
 let endpointUrl = process.env.ACS_ENDPOINT_URL;
 let userAccessToken = process.env.ACS_USER_ACCESS_TOKEN;
 
-// Check if required environment variables are set
+// Validate required environment variables
 if (!endpointUrl || !userAccessToken) {
-  console.error('❌ ERROR: Required environment variables are missing!');
+  console.error('Required environment variables are missing!');
   console.error('Please ensure ACS_ENDPOINT_URL and ACS_USER_ACCESS_TOKEN are set in your .env file');
-  // Add obvious UI error
   document.body.innerHTML = `
     <div style="color: red; padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; text-align: center; border: 2px solid red; border-radius: 8px;">
-      <h2>⚠️ Configuration Error</h2>
+      <h2>Configuration Error</h2>
       <p>Missing required environment variables. Please check your .env file and ensure the following are set correctly:</p>
       <ul style="list-style: none; text-align: left; display: inline-block;">
-        <li>✓ ${endpointUrl ? '✅ ACS_ENDPOINT_URL is set' : '❌ ACS_ENDPOINT_URL is missing'}</li>
-        <li>✓ ${userAccessToken ? '✅ ACS_USER_ACCESS_TOKEN is set' : '❌ ACS_USER_ACCESS_TOKEN is missing'}</li>
+        <li>${endpointUrl ? '✅ ACS_ENDPOINT_URL is set' : '❌ ACS_ENDPOINT_URL is missing'}</li>
+        <li>${userAccessToken ? '✅ ACS_USER_ACCESS_TOKEN is set' : '❌ ACS_USER_ACCESS_TOKEN is missing'}</li>
       </ul>
       <p>Refer to the README.md for setup instructions.</p>
     </div>
   `;
 }
 
-// DOM Element check
-console.log('🔍 Checking DOM elements...');
+// Initialize DOM elements
 const customerMessagesContainer = document.getElementById('customerMessages');
 const customerInput = document.getElementById('customerInput');
 const customerSendButton = document.getElementById('customerSendButton');
@@ -36,60 +34,45 @@ const agentMessagesContainer = document.getElementById('agentMessages');
 const agentInput = document.getElementById('agentInput');
 const agentSendButton = document.getElementById('agentSendButton');
 
-// Log if any elements are missing
-if (!customerMessagesContainer) console.error('❌ customerMessagesContainer not found');
-if (!customerInput) console.error('❌ customerInput not found');
-if (!customerSendButton) console.error('❌ customerSendButton not found');
-if (!agentMessagesContainer) console.error('❌ agentMessagesContainer not found');
-if (!agentInput) console.error('❌ agentInput not found');
-if (!agentSendButton) console.error('❌ agentSendButton not found');
+// Log missing elements
+if (!customerMessagesContainer) console.error('customerMessagesContainer not found');
+if (!customerInput) console.error('customerInput not found');
+if (!customerSendButton) console.error('customerSendButton not found');
+if (!agentMessagesContainer) console.error('agentMessagesContainer not found');
+if (!agentInput) console.error('agentInput not found');
+if (!agentSendButton) console.error('agentSendButton not found');
 
-console.log('📦 All DOM elements loaded:', {
-    customerMessagesContainer,
-    customerInput,
-    customerSendButton,
-    agentMessagesContainer,
-    agentInput,
-    agentSendButton
-});
-
-// IMPORTANT: Define chatClient in the global scope
+// Global variables
 let chatClient;
 let chatThreadClient;
 let chatThreadId;
 let notificationsStarted = false;
 
-// Get our user ID from the access token - only if token is present
+// Extract user ID from access token
 let ourUserId;
 if (userAccessToken) {
   try {
-    // Clean up token - remove any quotes, spaces or other characters that might cause issues
     const cleanToken = userAccessToken.trim().replace(/^['"]|['"]$/g, '');
     const tokenPayload = JSON.parse(atob(cleanToken.split('.')[1]));
     ourUserId = tokenPayload.skypeid.replace('acs:', '');
-    console.log('🆔 Our user ID:', ourUserId);
   } catch (error) {
-    console.error('❌ Error parsing user access token:', error);
+    console.error('Error parsing user access token:', error);
     ourUserId = null;
   }
 } else {
-  console.error('❌ Cannot get user ID - access token is missing');
+  console.error('Cannot get user ID - access token is missing');
 }
 
-// Initialize the chat client globally - only if required values are present
+// Initialize chat client
 if (endpointUrl && userAccessToken) {
   try {
-    console.log('🚀 Initializing Azure Communication Chat client...');
-    // Clean up token again to ensure consistency
     const cleanToken = userAccessToken.trim().replace(/^['"]|['"]$/g, '');
     chatClient = new ChatClient(endpointUrl, new AzureCommunicationTokenCredential(cleanToken));
-    console.log('✅ Chat client created successfully:', chatClient);
   } catch (error) {
-    console.error('❌ Error creating chat client:', error);
-    // Show a helpful error in the UI
+    console.error('Error creating chat client:', error);
     document.body.innerHTML = `
       <div style="color: red; padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; text-align: center; border: 2px solid red; border-radius: 8px;">
-        <h2>⚠️ Chat Client Error</h2>
+        <h2>Chat Client Error</h2>
         <p>Failed to initialize Azure Communication Services chat client.</p>
         <p>Error: ${error.message}</p>
         <p>Please check your credentials and try again.</p>
@@ -97,50 +80,39 @@ if (endpointUrl && userAccessToken) {
     `;
   }
 } else {
-  console.error('❌ Cannot initialize chat client - missing required configuration');
+  console.error('Cannot initialize chat client - missing required configuration');
 }
 
-// Track message IDs we've already displayed to prevent duplicates
+// Track displayed messages to prevent duplicates
 const displayedMessageIds = new Set();
-console.log('🔄 Message tracking initialized');
 
-// Initialize bot service
+// Initialize services
 const botService = new BotService();
 let isAgentActive = false;
-
-// Initialize summary service
 const summaryService = new SummaryService();
 let lastMessageTime = null;
 
-// Function to show AI handling banner and disable input
+// Show AI handling banner and disable input
 function showAIHandlingBanner() {
-    // Remove any existing banner first
     removeAIHandlingBanner();
     
-    // Create banner
     const bannerDiv = document.createElement('div');
     bannerDiv.className = 'ai-handling-banner';
     bannerDiv.id = 'aiHandlingBanner';
     
-    // Add content to banner
     bannerDiv.innerHTML = `
-        <span class="ai-icon">🤖</span>
+        <span class="ai-icon">AI</span>
         <span>AI Assistant is handling this conversation</span>
         <button class="take-over-link" id="bannerTakeOverBtn">Take Over</button>
     `;
     
-    // Hide the input area and add the banner in its place
     const agentChat = document.querySelector('.agent-chat');
     const inputArea = document.querySelector('.agent-chat-input');
     
     if (agentChat && inputArea) {
-        // Hide the input area
         inputArea.style.display = 'none';
-        
-        // Add banner to the agent chat area
         agentChat.appendChild(bannerDiv);
         
-        // Add event listener to the Take Over button in the banner
         const bannerTakeOverBtn = document.getElementById('bannerTakeOverBtn');
         if (bannerTakeOverBtn) {
             bannerTakeOverBtn.addEventListener('click', handleTakeOver);
@@ -148,42 +120,36 @@ function showAIHandlingBanner() {
     }
 }
 
-// Function to handle taking over the conversation
+// Handle agent taking over conversation
 async function handleTakeOver() {
     if (!isAgentActive) {
         isAgentActive = true;
         
-        // Deactivate bot and send handoff message
         const handoffMessage = await botService.deactivate();
-        
-        // Send system message about agent joining
         const agentJoinMessage = "A customer service agent has joined the conversation.";
         
-        // Send both messages through ACS
         await sendSystemMessage(handoffMessage);
         await sendSystemMessage(agentJoinMessage);
         
-        // Remove the AI handling banner and enable input
         removeAIHandlingBanner();
         enableAgentInput();
     }
 }
 
-// Function to remove AI handling banner
+// Remove AI handling banner
 function removeAIHandlingBanner() {
     const existingBanner = document.getElementById('aiHandlingBanner');
     if (existingBanner) {
         existingBanner.remove();
     }
     
-    // Show the input area again
     const inputArea = document.querySelector('.agent-chat-input');
     if (inputArea) {
         inputArea.style.display = 'flex';
     }
 }
 
-// Function to enable agent input
+// Enable agent input
 function enableAgentInput() {
     const inputArea = document.querySelector('.agent-chat-input');
     if (inputArea) {
@@ -204,12 +170,11 @@ function enableAgentInput() {
     }
 }
 
-// Function to show error message in UI
+// Display error message in UI
 function showErrorInUI(message) {
-    console.error('🚨 Showing error in UI:', message);
+    console.error('Showing error in UI:', message);
     
     try {
-        // Show in customer UI
         if (customerMessagesContainer) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'message error';
@@ -224,7 +189,6 @@ function showErrorInUI(message) {
             customerMessagesContainer.scrollTop = customerMessagesContainer.scrollHeight;
         }
         
-        // Show in agent UI
         if (agentMessagesContainer) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'agent-message error';
@@ -243,117 +207,92 @@ function showErrorInUI(message) {
     }
 }
 
-// Create a chat thread with participants
+// Create chat thread with participants
 async function createChatThread() {
-    console.log('📝 Creating new chat thread...');
-    
     if (!chatClient) {
         throw new Error('Chat client is not initialized');
     }
     
     try {
-    const createChatThreadRequest = {
+        const createChatThreadRequest = {
             topic: "Flight Information"
-    };
+        };
         
-        console.log('👥 Setting up participants...');
-    const createChatThreadOptions = {
-        participants: [
-            {
-                id: { communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de7-5368-e138-8e3a0d00c891' },
+        const createChatThreadOptions = {
+            participants: [
+                {
+                    id: { communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de7-5368-e138-8e3a0d00c891' },
                     displayName: 'Sarah Jones'
-            },
-            {
-                id: { communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de8-ad3e-7137-8e3a0d00d703' },
+                },
+                {
+                    id: { communicationUserId: '8:acs:c2f2bf54-1b37-467f-ade3-15c6428d0310_00000026-6de8-ad3e-7137-8e3a0d00d703' },
                     displayName: 'Support Agent'
-            }
-        ]
-    };
+                }
+            ]
+        };
         
-        console.log('⏳ Awaiting thread creation with options:', createChatThreadOptions);
-    const createChatThreadResult = await chatClient.createChatThread(
-        createChatThreadRequest,
-        createChatThreadOptions
-    );
+        const createChatThreadResult = await chatClient.createChatThread(
+            createChatThreadRequest,
+            createChatThreadOptions
+        );
         
         chatThreadId = createChatThreadResult.chatThread.id;
-        console.log(`✨ Chat thread created with ID: ${chatThreadId}`);
-        console.log('📊 Thread details:', createChatThreadResult.chatThread);
-        console.log('👥 Initial participants added:', createChatThreadOptions.participants.map(p => p.displayName).join(', '));
-        
         return chatThreadId;
     } catch (error) {
-        console.error('❌ Error creating chat thread:', error);
+        console.error('Error creating chat thread:', error);
         throw error;
     }
 }
 
-// Modify addMessageToAgentUI function to handle bot messages
+// Add message to agent UI
 function addMessageToAgentUI(message, isAgent = false, sender = null, messageId = null) {
-    console.log(`🖥️ Adding message to agent UI - Message: "${message}", isAgent: ${isAgent}, sender: ${sender}, messageId: ${messageId}`);
-    
-    // If this message ID has already been displayed, don't show it again
     if (messageId && displayedMessageIds.has(`agent-${messageId}`)) {
-        console.log(`📋 Skipping duplicate agent message with ID: ${messageId}`);
         return;
     }
     
-    // Mark this message as displayed
     if (messageId) {
         displayedMessageIds.add(`agent-${messageId}`);
-        console.log(`✅ Marked message ${messageId} as displayed in agent UI`);
     }
     
     try {
-        // Check if this is a system message
         const isSystem = sender === 'System';
         
         if (isSystem) {
-            // Create a simpler wrapper for system messages
             const messageWrapper = document.createElement('div');
             messageWrapper.className = 'message-wrapper system';
             
-            // Create message div for system message
             const messageDiv = document.createElement('div');
             messageDiv.className = 'agent-message system';
             messageDiv.textContent = message;
             
-            // Add to wrapper and then to container
             messageWrapper.appendChild(messageDiv);
             agentMessagesContainer.appendChild(messageWrapper);
         } else {
-            // Create a wrapper for the message and avatar
             const messageWrapper = document.createElement('div');
             messageWrapper.style.display = 'flex';
             messageWrapper.style.alignItems = 'flex-start';
             messageWrapper.style.gap = '10px';
             messageWrapper.style.marginBottom = '15px';
             
-            // Add 'bot' class if the sender is AI Assistant
             const isBot = sender === 'AI Assistant';
             
-            // Create avatar element
             const avatarDiv = document.createElement('div');
             avatarDiv.className = isBot ? 'message-avatar bot' : 
                                 isAgent ? 'message-avatar agent' : 
                                 'message-avatar customer';
             
-            // Set avatar content based on sender
             if (isBot) {
-                avatarDiv.innerHTML = '🤖';
+                avatarDiv.innerHTML = 'AI';
             } else if (isAgent) {
                 avatarDiv.textContent = 'SA';
             } else {
-                // Customer
                 avatarDiv.textContent = 'SJ';
             }
             
-            // Create message div
             const messageDiv = document.createElement('div');
             messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'}`;
             messageDiv.style.margin = '0';
             
-            // Add sender if provided
             if (sender) {
                 const senderDiv = document.createElement('div');
                 senderDiv.className = 'sender';
@@ -361,57 +300,42 @@ function addMessageToAgentUI(message, isAgent = false, sender = null, messageId 
                 messageDiv.appendChild(senderDiv);
             }
             
-            // Add message content
             const contentDiv = document.createElement('div');
             contentDiv.textContent = message;
             messageDiv.appendChild(contentDiv);
             
-            // Append avatar and message to wrapper
             if (isBot || isAgent) {
-                // For bot and agent messages, avatar goes on the right
                 messageWrapper.style.flexDirection = 'row-reverse';
                 messageWrapper.appendChild(avatarDiv);
                 messageWrapper.appendChild(messageDiv);
             } else {
-                // For customer messages, avatar goes on the left
                 messageWrapper.appendChild(avatarDiv);
                 messageWrapper.appendChild(messageDiv);
             }
             
-            // Add to agent messages container
             agentMessagesContainer.appendChild(messageWrapper);
         }
         
-        // Scroll to bottom
         agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
-        console.log('✅ Message added to agent UI successfully');
     } catch (error) {
-        console.error('❌ Error adding message to agent UI:', error);
+        console.error('Error adding message to agent UI:', error);
     }
 }
 
-// Modify addMessageToCustomerUI to handle bot messages like received messages
+// Add message to customer UI
 function addMessageToCustomerUI(message, isCustomer = false, messageId = null, isBot = false) {
-    console.log(`🖥️ Adding message to customer UI - Message: "${message}", isCustomer: ${isCustomer}, messageId: ${messageId}`);
-    
-    // If this message ID has already been displayed, don't show it again
     if (messageId && displayedMessageIds.has(`customer-${messageId}`)) {
-        console.log(`📋 Skipping duplicate customer message with ID: ${messageId}`);
         return;
     }
     
-    // Mark this message as displayed
     if (messageId) {
         displayedMessageIds.add(`customer-${messageId}`);
-        console.log(`✅ Marked message ${messageId} as displayed in customer UI`);
     }
     
     try {
-        // Check if this is a system message (passed via senderDisplayName in sendSystemMessage)
         const isSystem = messageId && messageId.includes('system');
         
         if (isSystem) {
-            // Create a simple styled system message
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message system';
             messageDiv.style.alignSelf = 'center';
@@ -430,7 +354,6 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null, i
             messageDiv.className = `message ${isCustomer ? 'sent' : 'received'}`;
             messageDiv.textContent = message;
             
-            // Add timestamp
             const timestamp = document.createElement('div');
             timestamp.className = 'timestamp';
             timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -439,15 +362,13 @@ function addMessageToCustomerUI(message, isCustomer = false, messageId = null, i
             customerMessagesContainer.appendChild(messageDiv);
         }
         
-        // Scroll to bottom
         customerMessagesContainer.scrollTop = customerMessagesContainer.scrollHeight;
-        console.log('✅ Message added to customer UI successfully');
     } catch (error) {
-        console.error('❌ Error adding message to customer UI:', error);
+        console.error('Error adding message to customer UI:', error);
     }
 }
 
-// Add function to create and display summary card
+// Add summary to agent UI
 function addSummaryToAgentUI(summary) {
     const summaryDiv = document.createElement('div');
     summaryDiv.className = 'agent-message summary-card';
@@ -461,7 +382,6 @@ function addSummaryToAgentUI(summary) {
     summaryDiv.style.margin = '10px 0';
     summaryDiv.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
 
-    // Create header
     const headerDiv = document.createElement('div');
     headerDiv.style.display = 'flex';
     headerDiv.style.alignItems = 'center';
@@ -470,7 +390,7 @@ function addSummaryToAgentUI(summary) {
     headerDiv.style.borderBottom = '1px solid #e1e1e1';
 
     const iconSpan = document.createElement('span');
-    iconSpan.textContent = '📋';
+    iconSpan.textContent = 'Summary';
     iconSpan.style.marginRight = '8px';
     iconSpan.style.fontSize = '16px';
 
@@ -490,10 +410,7 @@ function addSummaryToAgentUI(summary) {
     headerDiv.appendChild(headerText);
     headerDiv.appendChild(timestamp);
 
-    // Create content with formatted paragraphs
     const contentDiv = document.createElement('div');
-    
-    // Format summary with paragraphs
     const paragraphs = summary.split('\n').filter(p => p.trim() !== '');
     
     paragraphs.forEach(paragraph => {
@@ -511,12 +428,11 @@ function addSummaryToAgentUI(summary) {
     summaryDiv.appendChild(headerDiv);
     summaryDiv.appendChild(contentDiv);
 
-    // Add to agent messages container
     agentMessagesContainer.appendChild(summaryDiv);
     agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
 }
 
-// Add function to handle summarize button click
+// Handle summarize button click
 const handleSummarizeClick = async () => {
     const summarizeButton = document.getElementById('summarizeButton');
     if (!summarizeButton || !chatThreadClient) {
@@ -527,7 +443,6 @@ const handleSummarizeClick = async () => {
     summarizeButton.disabled = true;
     
     try {
-        // Get all messages from the thread
         const messages = [];
         const iterator = chatThreadClient.listMessages();
         for await (const message of iterator) {
@@ -545,17 +460,13 @@ const handleSummarizeClick = async () => {
     }
 };
 
-// Update the bot message handling in sendCustomerMessage
+// Send customer message
 async function sendCustomerMessage(content) {
     if (!content.trim()) {
-        console.log('⚠️ Empty message - not sending');
         return;
     }
     
-    console.log(`📤 Sending customer message: "${content}"`);
-    
     try {
-        // Send customer message through ACS
         const sendMessageRequest = {
             content: content
         };
@@ -566,18 +477,14 @@ async function sendCustomerMessage(content) {
         
         const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
         
-        // Add message to customer UI immediately
         addMessageToCustomerUI(content, true, sendChatMessageResult.id, false);
         addMessageToAgentUI(content, false, 'Sarah Jones', sendChatMessageResult.id);
         
-        // Clear input
         customerInput.value = '';
         
-        // If bot is active, get bot response
         if (botService.isEnabled()) {
             const botResponse = await botService.processMessage(content);
             if (botResponse) {
-                // Send bot response through ACS
                 const botMessageRequest = {
                     content: botResponse
                 };
@@ -588,7 +495,6 @@ async function sendCustomerMessage(content) {
                 
                 const botMessageResult = await chatThreadClient.sendMessage(botMessageRequest, botMessageOptions);
                 
-                // Add bot response to both UIs with bot styling
                 addMessageToCustomerUI(botResponse, false, botMessageResult.id, true);
                 addMessageToAgentUI(botResponse, false, 'AI Assistant', botMessageResult.id);
             }
@@ -600,20 +506,16 @@ async function sendCustomerMessage(content) {
             summarizeButton.disabled = false;
         }
     } catch (error) {
-        console.error('❌ Error in message flow:', error);
+        console.error('Error in message flow:', error);
         showErrorInUI('Failed to process message: ' + error.message);
     }
 }
 
-// Send a message from agent
+// Send agent message
 async function sendAgentMessage(content) {
     if (!content.trim()) {
-        console.log('⚠️ Empty message - not sending');
         return;
     }
-    
-    console.log(`📤 Sending agent message: "${content}"`);
-    console.log('🧪 Current chatThreadClient:', chatThreadClient);
     
     const sendMessageRequest = {
         content: content
@@ -622,21 +524,14 @@ async function sendAgentMessage(content) {
         senderDisplayName: 'Support Agent',
         type: 'text'
     };
-
-    console.log('📦 Message request:', sendMessageRequest);
-    console.log('⚙️ Message options:', sendMessageOptions);
     
     try {
         if (!chatThreadClient) {
             throw new Error('Chat thread client is not initialized');
         }
         
-        console.log('⏳ Awaiting sendMessage response...');
-    const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
-        console.log(`✅ Agent message sent successfully! Message ID: ${sendChatMessageResult.id}`);
-        console.log('📊 Send result details:', sendChatMessageResult);
+        const sendChatMessageResult = await chatThreadClient.sendMessage(sendMessageRequest, sendMessageOptions);
         
-        // Add message to agent UI immediately
         addMessageToAgentUI(content, true, 'Support Agent', sendChatMessageResult.id);
         agentInput.value = '';
         
@@ -646,17 +541,12 @@ async function sendAgentMessage(content) {
             summarizeButton.disabled = false;
         }
     } catch (error) {
-        console.error('❌ Error sending agent message:', error);
-        console.error('🧪 Error details:', {
-            error,
-            chatThreadClient,
-            threadId: chatThreadId
-        });
+        console.error('Error sending agent message:', error);
         showErrorInUI('Failed to send agent message: ' + error.message);
     }
 }
 
-// Add function to send system messages
+// Send system message
 async function sendSystemMessage(content) {
     try {
         const messageRequest = {
@@ -669,125 +559,89 @@ async function sendSystemMessage(content) {
         
         const messageResult = await chatThreadClient.sendMessage(messageRequest, messageOptions);
         
-        // Add system message to both UIs - passing the "System" sender
-        // Mark the message ID to identify it as a system message
         const systemMessageId = `system-${messageResult.id}`;
         addMessageToCustomerUI(content, false, systemMessageId, false);
         addMessageToAgentUI(content, false, 'System', messageResult.id);
     } catch (error) {
-        console.error('❌ Error sending system message:', error);
+        console.error('Error sending system message:', error);
     }
 }
 
-// Set up event handlers for real-time notifications
+// Set up event handlers
 async function setupEventHandlers() {
     if (!chatClient) {
-        console.error('❌ Cannot set up event handlers - Chat client is not initialized');
+        console.error('Cannot set up event handlers - Chat client is not initialized');
         return false;
     }
 
     try {
-        // Message received handler
         chatClient.on("chatMessageReceived", (e) => {
-            console.log('🎯 chatMessageReceived event triggered');
-            console.log('📩 Message received - FULL EVENT:', JSON.stringify(e));
-            
-            // Extract the sender display name and message content
             const senderDisplayName = e.senderDisplayName || 'Unknown';
             const messageContent = e.content || e.message || 'No content';
             const messageId = e.id || '';
             
-            console.log(`📩 Message received - From: ${senderDisplayName}, Content: ${messageContent}, ID: ${messageId}`);
-            
             const isAgent = senderDisplayName === 'Support Agent';
             const isCustomer = senderDisplayName === 'Sarah Jones';
             
-            console.log(`🧪 Sender analysis - isAgent: ${isAgent}, isCustomer: ${isCustomer}`);
-            
-            // If the message is from the agent, show in customer view as a received message
             if (isAgent) {
-                console.log('🔍 Agent message detected - adding to customer UI');
                 addMessageToCustomerUI(messageContent, false, messageId, false);
             }
             
-            // If the message is from the customer, show in agent view
             if (isCustomer) {
-                console.log('🔍 Customer message detected - adding to agent UI');
                 addMessageToAgentUI(messageContent, false, 'Sarah Jones', messageId);
             }
         });
 
         chatClient.on("participantsAdded", (e) => {
-            console.log('🎯 participantsAdded event triggered');
-            console.log('👋 New participants added:', e.participantsAdded.map(p => p.displayName).join(', '));
+            console.log('New participants added:', e.participantsAdded.map(p => p.displayName).join(', '));
         });
 
         chatClient.on("participantsRemoved", (e) => {
-            console.log('🎯 participantsRemoved event triggered');
-            console.log('👋 Participants removed:', e.participantsRemoved.map(p => p.displayName).join(', '));
+            console.log('Participants removed:', e.participantsRemoved.map(p => p.displayName).join(', '));
         });
 
         chatClient.on("typingIndicatorReceived", (e) => {
-            console.log('🎯 typingIndicatorReceived event triggered');
-            console.log(`✍️ ${e.sender.displayName || 'Someone'} is typing...`);
+            console.log(`${e.sender.displayName || 'Someone'} is typing...`);
         });
         
-        console.log('✅ Event handlers set up successfully');
         return true;
     } catch (error) {
-        console.error('❌ Error setting up event handlers:', error);
+        console.error('Error setting up event handlers:', error);
         return false;
     }
 }
 
-// Modify initializeChat to start bot conversation and show banner
+// Initialize chat
 async function initializeChat() {
-    console.log('🚀 Starting chat initialization...');
-    
     try {
-        // Make sure the chat client is available
         if (!chatClient) {
             throw new Error('Chat client is not initialized. Cannot proceed with initialization. Please check your environment variables.');
         }
         
-        // Make sure we have required credentials
         if (!endpointUrl || !userAccessToken) {
             throw new Error('Missing required credentials. Please set ACS_ENDPOINT_URL and ACS_USER_ACCESS_TOKEN in your .env file.');
         }
         
-        // Start real-time notifications FIRST - before creating chat thread
-        console.log('🔄 Setting up real-time notifications...');
         try {
             await chatClient.startRealtimeNotifications();
             notificationsStarted = true;
-            console.log('✅ Real-time notifications started');
-            
-            // Set up event handlers immediately after starting notifications
             await setupEventHandlers();
         } catch (notifError) {
-            console.error('❌ Failed to start real-time notifications:', notifError);
+            console.error('Failed to start real-time notifications:', notifError);
             showErrorInUI('Failed to start real-time notifications. Chat will not update in real-time.');
         }
         
-        // Create thread and get thread ID
-        console.log('🧵 Creating chat thread...');
         const threadId = await createChatThread();
         chatThreadId = threadId;
         
-        // Initialize chat thread client
-        console.log(`🔗 Creating chat thread client for thread ID: ${threadId}`);
         chatThreadClient = chatClient.getChatThreadClient(threadId);
         
         if (!chatThreadClient) {
             throw new Error('Failed to create chat thread client');
         }
         
-        console.log('✅ Chat thread client created:', chatThreadClient);
-        
-        // Start bot conversation with greeting
         const greeting = await botService.startConversation();
         
-        // Send bot greeting through ACS
         const botMessageRequest = {
             content: greeting
         };
@@ -798,15 +652,10 @@ async function initializeChat() {
         
         const botMessageResult = await chatThreadClient.sendMessage(botMessageRequest, botMessageOptions);
         
-        // Add bot greeting to both UIs with bot styling
         addMessageToCustomerUI(greeting, false, botMessageResult.id, true);
         addMessageToAgentUI(greeting, false, 'AI Assistant', botMessageResult.id);
         
-        // Show the AI handling banner and hide the input box since the bot is active
         showAIHandlingBanner();
-        
-        // Set up UI event listeners
-        console.log('🖱️ Setting up UI event listeners...');
         
         const summarizeButton = document.getElementById('summarizeButton');
         if (summarizeButton) {
@@ -814,53 +663,37 @@ async function initializeChat() {
         }
         
         customerSendButton.addEventListener('click', () => {
-            console.log('🖱️ Customer send button clicked');
             sendCustomerMessage(customerInput.value);
         });
         
         customerInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                console.log('⌨️ Customer pressed Enter key');
                 sendCustomerMessage(customerInput.value);
             }
         });
         
         agentSendButton.addEventListener('click', () => {
-            console.log('🖱️ Agent send button clicked');
             sendAgentMessage(agentInput.value);
         });
         
         agentInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                console.log('⌨️ Agent pressed Enter key');
                 sendAgentMessage(agentInput.value);
             }
         });
         
-        console.log('✅ Chat initialization complete!');
-        
     } catch (error) {
-        console.error('❌ Error initializing chat:', error);
-        console.error('🧪 Detailed error information:', {
-            error,
-            stack: error.stack,
-            message: error.message
-        });
-        
-        // Show error in UI
+        console.error('Error initializing chat:', error);
         showErrorInUI('Chat initialization failed: ' + error.message);
     }
 }
 
 // Check browser capabilities
-console.log('🌐 Checking browser capabilities...');
 if (!window.WebSocket) {
-    console.error('❌ WebSockets not supported - real-time notifications may not work');
+    console.error('WebSockets not supported - real-time notifications may not work');
     showErrorInUI('Your browser does not support WebSockets. Real-time chat updates will not work.');
 }
 
-// Start the customer service chat application
-console.log('🚀 Starting application...');
+// Start the application
 initializeChat();
-console.log('✅ Application startup complete - awaiting initialization to finish');
 
