@@ -33,13 +33,13 @@ The application consists of:
 2. **Agent Portal**: A comprehensive interface for agents to monitor conversations and take over when needed
 3. **Bot Service**: An AI-powered service using Azure OpenAI to provide automated responses
 4. **Summary Service**: AI service that can generate conversation summaries for agents
+5. **Token Server**: A minimal Express backend that issues ACS user tokens dynamically
 
 ## Prerequisites
 
 - An Azure account with an active subscription. [Create an account for free](https://azure.microsoft.com/free/).
 - [Node.js](https://nodejs.org/) (LTS version recommended)
 - An active Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource).
-- User Access Tokens for Azure Communication Services. See more info [here](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/identity/access-tokens).
 - Azure OpenAI Resource and Deployed Model. See [instructions](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal).
 
 
@@ -55,8 +55,8 @@ The application consists of:
 2. Fill in your actual values in the `.env` file:
    ```
    # Azure Communication Services Configuration
+   ACS_CONNECTION_STRING=your_acs_connection_string
    ACS_ENDPOINT_URL=your_acs_endpoint_url
-   ACS_USER_ACCESS_TOKEN=your_acs_user_access_token
 
    # Azure OpenAI Configuration
    AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint
@@ -65,17 +65,17 @@ The application consists of:
    AZURE_OPENAI_API_VERSION=your_api_version
    ```
 
-4. **Obtaining Credentials**:
+3. **Obtaining Credentials**:
    - **Azure Communication Services**: 
-     - Get your endpoint URL from your ACS resource in the Azure portal
-     - Generate user access tokens using the Azure Communication Services Identity SDK or through the Azure portal
+     - Get your connection string and endpoint URL from your ACS resource in the Azure portal
+     - The app will dynamically generate user access tokens using the backend token server
    - **Azure OpenAI**: 
      - Create and deploy an Azure OpenAI in Azure AI Foundry Models resource [Tutorial](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal)
      - AZURE_OPENAI_ENDPOINT: This value can be found in the Keys and Endpoint section when examining your resource from the Azure portal.
      - AZURE_OPENAI_DEPLOYMENT_NAME: This value will correspond to the custom name you chose for your deployment when you deployed a model. This value can be found under Resource Management > Model Deployments in the Azure portal.
-     OPENAI_API_VERSION: Learn more about [API Versions](https://learn.microsoft.com/en-us/azure/ai-services/openai/api-version-deprecation).
+     - AZURE_OPENAI_API_VERSION: Learn more about [API Versions](https://learn.microsoft.com/en-us/azure/ai-services/openai/api-version-deprecation).
 
-5. **Important Security Notes**:
+4. **Important Security Notes**:
    - Never commit your `.env` file to version control
    - The `.env` file is included in `.gitignore` to prevent accidental commits
    - For production deployments, use a secure way to manage secrets such as Azure Key Vault
@@ -110,12 +110,19 @@ This demo uses real Azure services, so minimal usage-based costs may apply. We'v
 
 3. Set up your `.env` file as described in the Configuration section above
 
-4. Start the development server:
+4. **Start the backend ACS token server:**
+   ```
+   node server.js
+   ```
+   This will start the Express server on port 3001 (or the port you specify in your `.env`).
+
+5. **Start the frontend development server:**
    ```
    npm start
    ```
+   This will start the Parcel dev server (typically on http://localhost:1234).
 
-5. Open your browser and navigate to the URL displayed in your terminal (typically http://localhost:1234)
+6. Open your browser and navigate to the URL displayed in your terminal (typically http://localhost:1234)
 
 ## Usage
 
@@ -134,19 +141,11 @@ This demo uses real Azure services, so minimal usage-based costs may apply. We'v
 
 If you encounter a **"JSON syntax error"** when running the application, check your `.env` file:
 
-1. Make sure your `ACS_USER_ACCESS_TOKEN` is a complete, valid JWT token.
+1. Make sure your `ACS_CONNECTION_STRING` and `ACS_ENDPOINT_URL` are correct.
 2. Ensure you haven't added quotes around any of the values.
 3. Check if all required environment variables are set.
 
-If you see **"Error: Chat Initialization failed"** in the app and a **401 (Unauthorized)** error in the browser console, your `ACS_USER_ACCESS_TOKEN` may have expired.  
-Tokens generated in the Azure portal are typically valid for **24 hours**. To resolve this:
-
-1. Generate a new access token from your Azure Communication Services resource.
-2. Update the `ACS_USER_ACCESS_TOKEN` value in your `.env` file.
-3. Restart the application:
-   ```bash
-   npm start
-   ```
+If you see **"Error: Chat Initialization failed"** in the app and a **401 (Unauthorized)** error in the browser console, your ACS credentials may be incorrect or expired. Double-check your `.env` values and restart both the backend and frontend servers.
 
 ## License
 
