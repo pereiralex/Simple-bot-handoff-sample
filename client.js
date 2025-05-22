@@ -5,24 +5,30 @@ import { AzureCommunicationTokenCredential } from '@azure/communication-common';
 import BotService, { SummaryService } from './bot-service.js';
 
 // Load environment variables
-let endpointUrl = process.env.ACS_ENDPOINT_URL;
-let userAccessToken = process.env.ACS_USER_ACCESS_TOKEN;
+let endpointUrl = null;
+let userAccessToken = null;
+let ourUserId = null;
 
-// Validate required environment variables
-if (!endpointUrl || !userAccessToken) {
-  console.error('Required environment variables are missing!');
-  console.error('Please ensure ACS_ENDPOINT_URL and ACS_USER_ACCESS_TOKEN are set in your .env file');
-  document.body.innerHTML = `
-    <div class="error-message">
-      <h2>Configuration Error</h2>
-      <p>Missing required environment variables. Please check your .env file and ensure the following are set correctly:</p>
-      <ul>
-        <li>${endpointUrl ? '✅ ACS_ENDPOINT_URL is set' : '❌ ACS_ENDPOINT_URL is missing'}</li>
-        <li>${userAccessToken ? '✅ ACS_USER_ACCESS_TOKEN is set' : '❌ ACS_USER_ACCESS_TOKEN is missing'}</li>
-      </ul>
-      <p>Refer to the README.md for setup instructions.</p>
-    </div>
-  `;
+async function fetchAcsToken() {
+  try {
+    const res = await fetch('http://localhost:3001/api/token');
+    if (!res.ok) throw new Error('Failed to fetch ACS token');
+    const data = await res.json();
+    userAccessToken = data.token;
+    ourUserId = data.userId;
+    endpointUrl = data.endpointUrl;
+    return true;
+  } catch (err) {
+    console.error('Could not fetch ACS token:', err);
+    document.body.innerHTML = `
+      <div class="error-message">
+        <h2>Token Error</h2>
+        <p>Could not fetch ACS access token from backend.</p>
+        <p>${err.message}</p>
+      </div>
+    `;
+    return false;
+  }
 }
 
 // Initialize DOM elements
@@ -48,41 +54,6 @@ let chatThreadClient;
 let chatThreadId;
 let notificationsStarted = false;
 let currentCustomer = null;
-
-// Extract user ID from access token
-let ourUserId;
-if (userAccessToken) {
-  try {
-    const cleanToken = userAccessToken.trim().replace(/^['"]|['"]$/g, '');
-    const tokenPayload = JSON.parse(atob(cleanToken.split('.')[1]));
-    ourUserId = tokenPayload.skypeid.replace('acs:', '');
-  } catch (error) {
-    console.error('Error parsing user access token:', error);
-    ourUserId = null;
-  }
-} else {
-  console.error('Cannot get user ID - access token is missing');
-}
-
-// Initialize chat client
-if (endpointUrl && userAccessToken) {
-  try {
-    const cleanToken = userAccessToken.trim().replace(/^['"]|['"]$/g, '');
-    chatClient = new ChatClient(endpointUrl, new AzureCommunicationTokenCredential(cleanToken));
-  } catch (error) {
-    console.error('Error creating chat client:', error);
-    document.body.innerHTML = `
-      <div class="error-message">
-        <h2>Chat Client Error</h2>
-        <p>Failed to initialize Azure Communication Services chat client.</p>
-        <p>Error: ${error.message}</p>
-        <p>Please check your credentials and try again.</p>
-      </div>
-    `;
-  }
-} else {
-  console.error('Cannot initialize chat client - missing required configuration');
-}
 
 // Track displayed messages to prevent duplicates
 const displayedMessageIds = new Set();
@@ -699,6 +670,38 @@ if (!window.WebSocket) {
     showErrorInUI('Your browser does not support WebSockets. Real-time chat updates will not work.');
 }
 
+// Initialize chat client
+async function initializeChatClient() {
+  if (!endpointUrl || !userAccessToken) {
+    throw new Error('Missing required credentials. Please ensure fetchAcsToken completed successfully.');
+  }
+
+  try {
+    const cleanToken = userAccessToken.trim().replace(/^['"]|['"]$/g, '');
+    chatClient = new ChatClient(endpointUrl, new AzureCommunicationTokenCredential(cleanToken));
+    return true;
+  } catch (error) {
+    console.error('Error creating chat client:', error);
+    document.body.innerHTML = `
+      <div class="error-message">
+        <h2>Chat Client Error</h2>
+        <p>Failed to initialize Azure Communication Services chat client.</p>
+        <p>Error: ${error.message}</p>
+        <p>Please check your credentials and try again.</p>
+      </div>
+    `;
+    return false;
+  }
+}
+
 // Start the application
-initializeChat();
+(async () => {
+  const tokenOk = await fetchAcsToken();
+  if (!tokenOk) return;
+  
+  const clientOk = await initializeChatClient();
+  if (!clientOk) return;
+  
+  await initializeChat();
+})();
 
