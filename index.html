@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div id="errorContainer"></div>
     <div class="header-bar">
         <a href="#" class="header-tab title">Simple Bot Handoff Sample</a>
         <a href="https://github.com/Azure-Samples/communication-services-javascript-quickstarts/tree/main/bot-handoff" class="header-tab link">View on GitHub</a>
@@ -48,7 +49,7 @@
                     <div class="agent-chat">
                         <div class="agent-chat-header">
                             <div class="left-section">
-                                <div class="avatar">C</div>
+                                <div class="avatar">SJ</div>
                                 <div>
                                     <div>Sarah Jones</div>
                                     <div class="online-indicator">
@@ -63,6 +64,7 @@
                             </div>
                         </div>
                         <div class="agent-chat-messages" id="agentMessages"></div>
+                        <div id="aiHandlingBannerContainer"></div>
                         <div class="agent-chat-input">
                             <input type="text" id="agentInput" placeholder="Type a message...">
                             <button id="agentSendButton">Send</button>
