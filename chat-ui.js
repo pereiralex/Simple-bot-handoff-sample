@@ -160,16 +160,17 @@ function renderMessage({
     isAgent = false,
     isBot = false,
     isSystem = false,
-    messageId = null
+    messageId = null,
+    isLocal = false,
+    isLocalBot = false
 }) {
     if (!container) return;
-    // Prevent duplicate messages if messageId is provided
     if (messageId && container.querySelector(`[data-message-id="${messageId}"]`)) return;
 
     let messageDiv, messageWrapper;
     if (isSystem) {
         messageDiv = document.createElement('div');
-        messageDiv.className = container.id === 'agentMessages' ? 'agent-message system' : 'message system-message';
+        messageDiv.className = 'message system-message';
         messageDiv.textContent = message;
         if (messageId) messageDiv.dataset.messageId = messageId;
         if (container.id === 'agentMessages') {
@@ -180,67 +181,25 @@ function renderMessage({
         } else {
             container.appendChild(messageDiv);
         }
-    } else if (container.id === 'agentMessages') {
-        // AGENT VIEW
-        messageWrapper = document.createElement('div');
-        messageWrapper.className = 'message-wrapper';
-        if (isAgent || isBot) messageWrapper.classList.add('reversed');
-        // Avatar
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = isBot ? 'message-avatar bot' : isAgent ? 'message-avatar agent' : 'message-avatar customer';
-        if (isBot) {
-            avatarDiv.innerHTML = '🤖';
-        } else if (isAgent) {
-            avatarDiv.textContent = 'SA';
-        } else {
-            avatarDiv.textContent = 'CA';
-        }
-        // Message content
-        messageDiv = document.createElement('div');
-        messageDiv.className = `agent-message ${isBot ? 'bot' : isAgent ? 'agent' : 'customer'} message-content`;
-        if (sender) {
-            const senderDiv = document.createElement('div');
-            senderDiv.className = 'sender';
-            senderDiv.textContent = sender;
-            messageDiv.appendChild(senderDiv);
-        }
-        const contentDiv = document.createElement('div');
-        contentDiv.textContent = message;
-        messageDiv.appendChild(contentDiv);
-        if (messageId) messageDiv.dataset.messageId = messageId;
-        // Append avatar and message
-        if (isAgent || isBot) {
-            messageWrapper.appendChild(avatarDiv);
-            messageWrapper.appendChild(messageDiv);
-        } else {
-            messageWrapper.appendChild(avatarDiv);
-            messageWrapper.appendChild(messageDiv);
-        }
-        container.appendChild(messageWrapper);
-        // Timestamp below the message bubble
-        const timestamp = document.createElement('div');
-        timestamp.className = 'timestamp';
-        timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        messageWrapper.appendChild(timestamp);
     } else {
-        // CUSTOMER VIEW
         messageWrapper = document.createElement('div');
         messageWrapper.className = 'message-wrapper';
-        // Avatar
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = 'message-avatar customer';
-        avatarDiv.textContent = 'CA';
-        // Message content
+        // Determine message type for styling
+        let messageClass = 'message remote';
+        if (isLocalBot) {
+            messageClass = 'message local-bot';
+        } else if (isLocal) {
+            messageClass = 'message local';
+        }
         messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isCustomer ? 'sent' : 'received'}`;
+        messageDiv.className = messageClass;
         messageDiv.textContent = message;
+        if (messageId) messageDiv.dataset.messageId = messageId;
         // Timestamp inside the message bubble
         const timestamp = document.createElement('div');
         timestamp.className = 'timestamp';
         timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         messageDiv.appendChild(timestamp);
-        if (messageId) messageDiv.dataset.messageId = messageId;
-        messageWrapper.appendChild(avatarDiv);
         messageWrapper.appendChild(messageDiv);
         container.appendChild(messageWrapper);
     }
@@ -250,11 +209,12 @@ function renderMessage({
 export function addMessageToCustomerUI(message, isCustomer = false, messageId = null, isBot = false, chatThreadId, displayedMessageIds, setLatestMessage) {
     if (messageId && displayedMessageIds.has(`customer-${messageId}`)) return;
     if (messageId) displayedMessageIds.add(`customer-${messageId}`);
+    // System message detection
     const isSystem = messageId && messageId.includes('system');
     renderMessage({
         container: document.getElementById('customerMessages'),
         message,
-        isCustomer,
+        isLocal: isCustomer && !isBot && !isSystem,
         isSystem,
         messageId
     });
@@ -264,14 +224,20 @@ export function addMessageToCustomerUI(message, isCustomer = false, messageId = 
 export function addMessageToAgentUI(message, isAgent = false, sender = null, messageId = null, chatThreadId, displayedMessageIds, setLatestMessage) {
     if (messageId && displayedMessageIds.has(`agent-${messageId}`)) return;
     if (messageId) displayedMessageIds.add(`agent-${messageId}`);
-    const isSystem = sender === 'System';
-    const isBot = sender === 'AI Assistant';
+    // System message detection
+    const isSystem = sender === 'System' || (messageId && messageId.includes('system'));
+    let isLocal = false;
+    let isLocalBot = false;
+    if (isAgent && !isSystem) {
+        isLocal = true;
+    } else if (sender === 'AI Assistant' && !isSystem) {
+        isLocalBot = true;
+    }
     renderMessage({
         container: document.getElementById('agentMessages'),
         message,
-        sender,
-        isAgent,
-        isBot,
+        isLocal,
+        isLocalBot,
         isSystem,
         messageId
     });

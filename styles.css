@@ -111,7 +111,7 @@
 .agent-message {
     padding: 10px 15px;
     border-radius: 4px;
-    max-width: calc(100% - 160px);
+    max-width: calc(100% - 100px);
     word-wrap: break-word;
 }
 
@@ -369,45 +369,69 @@ body {
     word-wrap: break-word;
 }
 
-.message.sent {
-    align-self: flex-end;
-    background: #0084ff;
-    color: white;
-    border-bottom-right-radius: 4px;
-}
-
-.message.received {
+/* Message bubbles by direction/type */
+.message.remote {
     align-self: flex-start;
     background: #eee;
-    color: black;
-    border-bottom-left-radius: 4px;
+    color: #222;
+    border-radius: 18px 18px 18px 4px;
+    margin-right: auto;
+    margin-left: 0;
+    max-width: 80%;
+    padding: 10px 15px;
+    word-break: break-word;
 }
 
-.message.system {
+.message.local {
+    align-self: flex-end;
+    background: #0084ff;
+    color: #fff;
+    border-radius: 18px 18px 4px 18px;
+    margin-left: auto;
+    margin-right: 0;
+    max-width: 80%;
+    padding: 10px 15px;
+    word-break: break-word;
+}
+
+.message.local-bot {
+    align-self: flex-end;
+    background: #e6f2ff;
+    color: #222;
+    border-radius: 18px 18px 4px 18px;
+    margin-left: auto;
+    margin-right: 0;
+    max-width: 80%;
+    padding: 10px 15px;
+    word-break: break-word;
+}
+
+/* System message in customer view */
+.message.system-message {
     align-self: center;
     background: transparent;
     color: #6c757d;
     font-size: 13px;
-    max-width: 100%;
-    text-align: center;
     padding: 5px 15px;
+    text-align: center;
+    max-width: 100%;
     border: none;
     border-radius: 0;
+    margin: 8px 0;
 }
 
+/* Remove/override old message bubble styles */
+/* (No longer needed, but kept for clarity)
+.message.sent,
+.message.received,
+.agent-message.agent.message-content,
+.agent-message.customer,
+.agent-message.bot,
+.agent-message.system,
 .message.bot {
-    align-self: flex-end;
-    background: #e9e9e9;
-    color: #333;
-    border-bottom-right-radius: 4px;
+    display: none !important;
 }
-
-.message-wrapper.system {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    margin-bottom: 8px;
-}
+*/
 
 /* Online indicator */
 .online-indicator {
@@ -627,18 +651,6 @@ body {
     margin: 0;
 }
 
-/* System message in customer view */
-.message.system-message {
-    align-self: center;
-    background: transparent;
-    color: #6c757d;
-    font-size: 13px;
-    padding: 5px 15px;
-    text-align: center;
-    max-width: 100%;
-    border: none;
-}
-
 /* Input area visibility */
 .input-area-hidden {
     display: none !important;
@@ -646,4 +658,42 @@ body {
 
 .input-area-visible {
     display: flex !important;
+}
+
+/* Agent message wrapper (right-aligned) */
+.message-wrapper.reversed {
+    flex-direction: row-reverse;
+    align-items: flex-end;
+}
+
+/* Agent message header (timestamp and sender) */
+.message-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 8px;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+/* Agent message bubble */
+.agent-message.agent.message-content {
+    background: #fff;
+    border: 1px solid #e1e1e1;
+    border-radius: 12px 12px 4px 12px;
+    color: #222;
+    font-size: 15px;
+    padding: 10px 16px;
+    max-width: 420px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    margin-left: 0;
+    margin-right: 0;
+    align-self: flex-end;
+    word-break: break-word;
+}
+
+/* Agent avatar spacing */
+.message-avatar.agent {
+    margin-left: 12px;
 } 
