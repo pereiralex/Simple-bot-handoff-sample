@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Bot Handoff Sample</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="errorContainer"></div>
+    <div class="header-bar">
+        <a href="#" class="header-tab title">Simple Bot Handoff Sample</a>
+        <a href="https://github.com/Azure-Samples/communication-services-javascript-quickstarts/tree/main/bot-handoff" class="header-tab link">View on GitHub</a>
+    </div>
+    <div class="main-container">
+        <div class="customer-section">
+            <div class="support-chat-container">
+                <div class="support-chat-header">
+                    <div class="avatar">✈️</div>
+                    <div class="left-section">
+                        <div>Contoso Airlines</div>
+                        <div class="online-indicator">
+                            <div class="dot"></div>
+                            <span>Online</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="support-chat-messages" id="customerMessages"></div>
+                <div class="support-chat-input">
+                    <input type="text" id="customerInput" placeholder="Type a message...">
+                    <button id="customerSendButton">Send</button>
+                </div>
+            </div>
+        </div>
+        <div class="agent-section">
+            <div class="agent-portal-container">
+                <div class="agent-header">
+                    <h2>Contoso Airlines Agent Portal</h2>
+                    <div class="agent-profile">
+                        <span>Agent</span>
+                        <div class="avatar">A</div>
+                    </div>
+                </div>
+                <div class="agent-content">
+                    <div class="customer-list">
+                        <div class="customer-list-header">Customers</div>
+                        <div id="customerList"></div>
+                    </div>
+                    <div class="agent-chat">
+                        <div class="agent-chat-header">
+                            <div class="left-section">
+                                <div class="avatar">SJ</div>
+                                <div>
+                                    <div>Sarah Jones</div>
+                                    <div class="online-indicator">
+                                        <div class="dot"></div>
+                                        <span>Online</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <button id="summarizeButton" class="action-button">Summarize</button>
+                                <button id="takeoverButton" class="action-button">Take Over</button>
+                            </div>
+                        </div>
+                        <div class="agent-chat-messages" id="agentMessages"></div>
+                        <div id="aiHandlingBannerContainer"></div>
+                        <div class="agent-chat-input">
+                            <input type="text" id="agentInput" placeholder="Type a message...">
+                            <button id="agentSendButton">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="./client.js"></script>
+</body>
+</html>
